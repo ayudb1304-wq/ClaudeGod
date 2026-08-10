@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.zip
+
+# MoR test-mode keys (ARCHITECTURE §9) must never be committed.
+.env
+.env.local
+.env.*.local
+
+.DS_Store
+*.log
