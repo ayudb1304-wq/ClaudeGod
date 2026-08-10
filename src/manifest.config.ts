@@ -16,7 +16,8 @@ export default defineManifest({
   permissions: ['storage', 'notifications', 'alarms'],
   host_permissions: ['https://claude.ai/*'],
 
-  // Placeholder art until the M6 store-asset pass; the 128px file is also the
+  // Derived from ClaudeGod-Logo.png at the repo root (the 2000px master —
+  // regenerate with `sips -z <size> <size>`). The 128px file is also the
   // notification icon (chrome.notifications requires an iconUrl).
   icons: {
     16: 'icons/icon-16.png',
