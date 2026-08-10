@@ -21,7 +21,9 @@ No backend. No analytics SDK in v1.
 src/
   manifest.ts             # CRXJS manifest definition
   background/             # MV3 service worker
-    index.ts              # alarms (revalidation, sync ticks), notifications
+    serviceWorker.ts      # alarms (revalidation, usage ticks), notifications.
+                          # NOT index.ts: a basename shared with content/index.ts
+                          # makes CRXJS wire the wrong chunk into the worker loader
   content/
     index.ts              # bootstraps on https://claude.ai/*
     ui/                   # overlay (Cmd+K), folder panel, usage widget, slash-picker

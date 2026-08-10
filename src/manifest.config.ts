@@ -25,7 +25,11 @@ export default defineManifest({
   },
 
   background: {
-    service_worker: 'src/background/index.ts',
+    // Unique basename on purpose: with two entries both named index.ts
+    // (content + background), CRXJS wrote the content-script chunk into
+    // service-worker-loader.js and the worker failed to register (no
+    // `document` in a worker). Verified 2026-08-10 on a real unpacked load.
+    service_worker: 'src/background/serviceWorker.ts',
     type: 'module',
   },
 
