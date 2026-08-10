@@ -87,8 +87,10 @@ export const db = new ClaudeGodDb();
  * The slice of persistence that core/sync.ts needs.
  *
  * Sync depends on this interface rather than on Dexie directly so the state
- * machine can be tested against an in-memory implementation. That keeps
- * fake-indexeddb out of the dependency tree and keeps the resume tests fast.
+ * machine can be tested against an in-memory implementation, which keeps the
+ * resume tests fast. (fake-indexeddb does exist as a devDep since the M2
+ * verification pass, but only tests/searchStore.test.ts uses it — the one
+ * module whose Dexie queries have no port to hide behind.)
  */
 export interface SyncStore {
   getCheckpoint(): Promise<unknown>;
