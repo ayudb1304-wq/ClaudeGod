@@ -114,7 +114,7 @@ class UsageWidget {
     this.els.toggle.addEventListener('click', () => {
       this.settings = { ...this.settings, collapsed: !this.settings.collapsed };
       this.render();
-      void updateUsageWidgetSettings({ collapsed: this.settings.collapsed });
+      this.persist();
     });
     this.wireDrag();
     this.render();
@@ -207,13 +207,20 @@ class UsageWidget {
       start = null;
       header.releasePointerCapture(event.pointerId);
       header.style.cursor = 'grab';
-      void updateUsageWidgetSettings({
-        right: this.settings.right,
-        bottom: this.settings.bottom,
-      });
+      this.persist();
     };
     header.addEventListener('pointerup', finish);
     header.addEventListener('pointercancel', finish);
+  }
+
+  /**
+   * Always writes the widget's complete state. Partial patches from the toggle
+   * and the drag handler can interleave (each is an async read-merge-write), and
+   * a stale read then silently reverts the other writer's field. Full-state
+   * writes make last-writer-wins consistent.
+   */
+  private persist(): void {
+    void updateUsageWidgetSettings({ ...this.settings });
   }
 }
 
@@ -224,6 +231,9 @@ function clampOffset(value: number, viewport: number): number {
 export function mountUsageWidget(): void {
   void (async () => {
     try {
+      // A stale instance can survive an extension reload on an open tab; two
+      // widgets fighting over position writes corrupt the stored settings.
+      document.getElementById(WIDGET_ID)?.remove();
       const settings = await readSettings();
       const widget = new UsageWidget(settings.usageWidget);
       widget.attach();
