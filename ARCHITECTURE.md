@@ -36,6 +36,8 @@ src/
     sync.ts               # backfill + incremental sync state machine
     searchIndex.ts        # MiniSearch build/update/persist
     usage.ts              # usage signal reading + estimation
+    folders.ts            # folder store over chunked storage.sync (ids only)
+    prompts.ts            # prompt library + {{variable}} parsing
     entitlements.ts       # single source of truth for free/pro gates
     license.ts            # MoR license validation client
     exporter.ts           # md/json/zip generation
@@ -91,6 +93,23 @@ behaviour rather than preference:
 detail-fetched is retried rather than silently treated as complete.
 
 `chrome.storage.sync` (metadata only, chunked): `folders` (id, name, color, convIds[]), `prompts` (id, title, body, category), `settings`, `licenseCache` (in `storage.local`, not sync). Enforce: nothing from `messages`/`artifacts` may be written to any `chrome.storage` area — add a lint-style unit test on the storage wrapper.
+
+**Chunking (as built).** `folders` and `prompts` exceed the 8KB-per-item quota once
+they hold a few hundred ids, so `shared/storage.ts` writes a manifest
+(`{chunkCount}`) under the base key plus JSON slices under derived keys
+(`folders__0`, `folders__1`, …), split on UTF-8 byte boundaries and never through
+a surrogate pair. Manifest and slices go in one `set` call, so a reader never
+sees a manifest pointing at slices that were not written; a missing slice reports
+"nothing" rather than parsing a truncated list. Derived keys deliberately carry
+the base key as a prefix, which keeps the declared key space closed — the
+property the storage-content guard depends on. Writes beyond
+`SYNC_VALUE_BUDGET_BYTES` (40KB, well under the 100KB profile total) throw a
+typed `StorageQuotaError` that the UI turns into a calm, actionable line.
+
+Folders store conversation **ids only** — no titles. That is hard rule 4, not a
+schema preference: titles are conversation content. The panel and popup resolve
+display names from IndexedDB at render time (`getConversationTitles`), and a
+chat the mirror has not seen yet still lists and still opens.
 
 **Index strategy:** build MiniSearch over `messages.text` (chunk long messages to ~1KB fields) + titles; serialize to `searchMeta` after backfill; incremental `add` on sync; rebuild from Dexie if deserialization fails. Free tier: index only the 100 most recent conversations (drop + re-add on rotation).
 

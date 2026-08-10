@@ -198,3 +198,33 @@ source exists.
 
 `/api/bootstrap` is listed only so a future reader knows it was checked and
 deliberately rejected.
+
+---
+
+## 6. DOM behaviours that shape the UI (observed 2026-08-11, M4)
+
+Not API shapes, but the same category of thing: unversioned facts about
+claude.ai that our code has to survive. Both were found only by running against
+the real site.
+
+**Sidebar chat links are `draggable="false"`.** Observed markup:
+
+```html
+<a href="/chat/f3ac8242-…" draggable="false" data-roving-item="" data-row-main-button="" class="…">
+```
+
+The browser therefore never starts an HTML5 drag from them: no `dragstart`, no
+`dragover`, no `drop`. Dragging a chat looks like it does something (Claude
+renders its own visual) but nothing reaches our folder rows. `content/dragData.ts`
+still serves our own drag sources (search results); Claude's sidebar needs the
+pointer-event path in `content/sidebarDrag.ts`, which keys off nothing but the
+`/chat/<uuid>` href.
+
+**Claude redirects loose keystrokes into its composer, and shadow DOM does not
+hide us from it.** Shadow retargeting makes a focused input of ours look like a
+plain `<div>` to their document-level handler, so their redirect wins: characters
+land in the composer instead of our field. This bit twice — the M2 search overlay,
+then the M4 folder panel, where an Enter meant for a folder name **sent a real
+message to a real account** during verification. Every shadow host we mount now
+stops keyboard and input events at its boundary (`content/ui/shieldKeyboard.ts`).
+Any new host must do the same; this is not optional polish.
