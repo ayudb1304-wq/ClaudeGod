@@ -1,0 +1,33 @@
+{
+  "name": "claudegod",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "ClaudeGod: local-first productivity toolkit for claude.ai (search, folders, usage meters, prompts, export).",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test"
+  },
+  "dependencies": {
+    "preact": "10.29.8"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "2.7.1",
+    "@eslint/js": "10.0.1",
+    "@preact/preset-vite": "2.10.6",
+    "@types/chrome": "0.2.5",
+    "@types/node": "22.20.1",
+    "eslint": "10.8.1",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.66.0",
+    "vite": "8.2.1",
+    "vitest": "4.1.10"
+  },
+  "packageManager": "pnpm@9.12.0"
+}
