@@ -22,7 +22,13 @@ export const SYNC_KEYS = ['folders', 'prompts', 'settings'] as const;
  * usageAlert holds the resets_at of the last fired notification so "once per
  * window" survives service-worker restarts.
  */
-export const LOCAL_KEYS = ['licenseCache', 'onboarding', 'debugLog', 'usageCache', 'usageAlert'] as const;
+export const LOCAL_KEYS = [
+  'licenseCache',
+  'onboarding',
+  'debugLog',
+  'usageCache',
+  'usageAlert',
+] as const;
 
 export type SyncKey = (typeof SYNC_KEYS)[number];
 export type LocalKey = (typeof LOCAL_KEYS)[number];
@@ -36,6 +42,141 @@ export async function setSync(key: SyncKey, value: unknown): Promise<void> {
   await chrome.storage.sync.set({ [key]: value });
 }
 
+// ---------------------------------------------------------------------------
+// Chunked sync values (folders, prompts)
+// ---------------------------------------------------------------------------
+
+/**
+ * chrome.storage.sync enforces 8KB per item and 100KB per profile. Folders and
+ * prompts are lists that grow with use, so they are stored as a manifest under
+ * the base key plus JSON slices under derived keys (`folders__0`, `folders__1`).
+ *
+ * Derived keys deliberately carry the base key as a prefix: the key space stays
+ * closed (nothing outside SYNC_KEYS can be invented by a caller), which is what
+ * keeps the storage-content guard meaningful.
+ */
+const CHUNK_PAYLOAD_BYTES = 6000;
+
+/**
+ * Ceiling for one chunked value, well under the 100KB profile total: `settings`
+ * and the other chunked key both need room, and hitting the real quota mid-write
+ * is a much worse experience than refusing a save that is already absurd.
+ */
+export const SYNC_VALUE_BUDGET_BYTES = 40_000;
+
+/** Thrown when a save would not fit. UI catches this and says so calmly. */
+export class StorageQuotaError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'StorageQuotaError';
+  }
+}
+
+function chunkKey(key: SyncKey, index: number): string {
+  return `${key}__${String(index)}`;
+}
+
+const encoder = new TextEncoder();
+
+export function encodedLength(text: string): number {
+  return encoder.encode(text).length;
+}
+
+function isHighSurrogate(code: number): boolean {
+  return code >= 0xd800 && code <= 0xdbff;
+}
+
+/**
+ * Splits a JSON string into pieces that each fit `maxBytes` when UTF-8 encoded.
+ *
+ * Shrinks by the measured overshoot ratio rather than one character at a time,
+ * so a prompt library full of multi-byte text costs a handful of re-encodings
+ * instead of thousands.
+ */
+export function splitByBytes(text: string, maxBytes: number): string[] {
+  const chunks: string[] = [];
+  let rest = text;
+
+  while (rest.length > 0) {
+    let take = Math.min(rest.length, maxBytes);
+    let size = encodedLength(rest.slice(0, take));
+    while (take > 1 && size > maxBytes) {
+      take = Math.max(1, Math.floor(take * (maxBytes / size)));
+      size = encodedLength(rest.slice(0, take));
+    }
+    // A lone surrogate would survive storage but not a later JSON.parse.
+    if (take < rest.length && take > 1 && isHighSurrogate(rest.charCodeAt(take - 1))) take -= 1;
+
+    chunks.push(rest.slice(0, take));
+    rest = rest.slice(take);
+  }
+
+  return chunks;
+}
+
+interface ChunkManifest {
+  chunkCount: number;
+}
+
+function asManifest(value: unknown): ChunkManifest | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const count = (value as Record<string, unknown>)['chunkCount'];
+  return typeof count === 'number' && count >= 0 ? { chunkCount: count } : null;
+}
+
+export async function getSyncChunked<T>(key: SyncKey): Promise<T | undefined> {
+  const manifest = asManifest((await chrome.storage.sync.get(key))[key]);
+  if (!manifest) return undefined;
+
+  const keys = Array.from({ length: manifest.chunkCount }, (_, index) => chunkKey(key, index));
+  const stored = await chrome.storage.sync.get(keys);
+
+  let joined = '';
+  for (const part of keys.map((name) => stored[name])) {
+    // A missing slice means an interrupted write or a half-arrived sync from
+    // another device. Reporting nothing beats parsing a truncated list.
+    if (typeof part !== 'string') return undefined;
+    joined += part;
+  }
+
+  try {
+    return JSON.parse(joined) as T;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function setSyncChunked(key: SyncKey, value: unknown): Promise<void> {
+  const json = JSON.stringify(value ?? null);
+  if (encodedLength(json) > SYNC_VALUE_BUDGET_BYTES) {
+    throw new StorageQuotaError(`${key} is too large to sync`);
+  }
+
+  const parts = splitByBytes(json, CHUNK_PAYLOAD_BYTES);
+  const previous = asManifest((await chrome.storage.sync.get(key))[key]);
+
+  const items: Record<string, unknown> = { [key]: { chunkCount: parts.length } };
+  parts.forEach((part, index) => {
+    items[chunkKey(key, index)] = part;
+  });
+
+  try {
+    // Manifest and slices go in one call so a reader never sees a manifest
+    // pointing at slices that were not written.
+    await chrome.storage.sync.set(items);
+  } catch (error) {
+    throw new StorageQuotaError(
+      error instanceof Error ? error.message : `${key} could not be saved`,
+    );
+  }
+
+  const stale: string[] = [];
+  for (let index = parts.length; index < (previous?.chunkCount ?? 0); index += 1) {
+    stale.push(chunkKey(key, index));
+  }
+  if (stale.length > 0) await chrome.storage.sync.remove(stale);
+}
+
 export async function getLocal<T>(key: LocalKey): Promise<T | undefined> {
   const result = await chrome.storage.local.get(key);
   return result[key] as T | undefined;
@@ -43,6 +184,24 @@ export async function getLocal<T>(key: LocalKey): Promise<T | undefined> {
 
 export async function setLocal(key: LocalKey, value: unknown): Promise<void> {
   await chrome.storage.local.set({ [key]: value });
+}
+
+/**
+ * Notifies when a synced key changes, including edits made in another context
+ * (popup writes a folder; the panel on claude.ai repaints) or on another device.
+ * Chunked values report their base key, not the derived slice keys.
+ */
+export function subscribeSyncChanges(listener: (keys: SyncKey[]) => void): () => void {
+  const handler = (changes: Record<string, unknown>, area: string): void => {
+    if (area !== 'sync') return;
+    const touched = SYNC_KEYS.filter((key) =>
+      Object.keys(changes).some((changed) => changed === key || changed.startsWith(`${key}__`)),
+    );
+    if (touched.length > 0) listener(touched);
+  };
+
+  chrome.storage.onChanged.addListener(handler);
+  return () => chrome.storage.onChanged.removeListener(handler);
 }
 
 /** Settings → "Delete all local data" (FEATURES 8.1). */
