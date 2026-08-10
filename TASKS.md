@@ -7,11 +7,11 @@ Check off tasks as completed. Each task should end with passing checks per CLAUD
 - [x] Set up Vitest, ESLint, Prettier, typecheck script; CI-style `pnpm verify` script running all three. *(`pnpm verify` green: typecheck + lint + 8 tests.)*
 - [x] **SPIKE (de-risks everything):** from the content script, fetch `/api/organizations` and one page of `chat_conversations` on a logged-in claude.ai tab. Record real response shapes in `docs/api-notes.md`. If same-origin fetch lacks auth, implement and document the page-world proxy fallback. *Exit: raw conversation list logged with 200s.* *(Run 2026-08-10 against a real ~298-chat account. All 3 endpoints 200. Same-origin fetch carries auth, so no page-world proxy needed. Shapes recorded in `docs/api-notes.md`. **Caveat: verified from page context, NOT yet from the content-script isolated world** — confirm that by loading `dist/` unpacked before M1 sync.)*
 - [ ] **Follow-ups the spike created (do before M1):**
-  - [ ] Confirm same-origin fetch from the content-script isolated world (load `dist/` unpacked, call `listOrganizations()`).
-  - [ ] ARCHITECTURE §4: `artifacts` is a **derived** table, not an API entity. Artifacts are `tool_use` blocks named `artifacts`, versioned via `input.version_uuid`; export must fold versions per `input.id`.
-  - [ ] ARCHITECTURE §3: message array is `chat_messages`, `sender` is `human`/`assistant`.
-  - [ ] Decide default: exclude `thinking` content blocks from search index and export (recommended).
-  - [ ] FEATURES 3.1 / ARCHITECTURE §5: authoritative `/usage` endpoint exists, so cut estimation, `usageEvents`, `shared/limits.ts`, "est." labels, and the send-hook. Keep the degraded path.
+  - [ ] Confirm same-origin fetch from the content-script isolated world (load `dist/` unpacked, call `listOrganizations()`). *(Still open — needs a real browser session; bundled with the M1/M2/M3 verification pass below.)*
+  - [x] ARCHITECTURE §4: `artifacts` is a **derived** table, not an API entity. Artifacts are `tool_use` blocks named `artifacts`, versioned via `input.version_uuid`; export must fold versions per `input.id`. *(§4 rewritten during M1; `core/artifacts.ts` folds versions.)*
+  - [x] ARCHITECTURE §3: message array is `chat_messages`, `sender` is `human`/`assistant`. *(§3 endpoint list now records both divergences and the `/usage` endpoint.)*
+  - [x] Decide default: exclude `thinking` content blocks from search index and export (recommended). *(Decided: excluded by default; recorded in api-notes §3 with a caveat to verify the API's flattened `text` field doesn't smuggle thinking content during the real-backfill check.)*
+  - [x] FEATURES 3.1 / ARCHITECTURE §5: authoritative `/usage` endpoint exists, so cut estimation, `usageEvents`, `shared/limits.ts`, "est." labels, and the send-hook. Keep the degraded path. *(FEATURES 3.1 rewritten to the authoritative source + degraded path; M3 tasks below updated to match.)*
 - [x] Write `network-allowlist` test (fails build if any host other than claude.ai + payment provider appears in src) *(Negative-tested: injecting a rogue host fails the build.)*
 - [x] Write read-only guard test for the (stub) adapter. *(Negative-tested: a DELETE in the adapter, and a claude.ai URL outside the adapter, both fail the build.)*
 
@@ -34,10 +34,13 @@ Check off tasks as completed. Each task should end with passing checks per CLAUD
 - [x] Bundle after M2: content script 42.93KB gz (budget 250KB). Preact + MiniSearch + Dexie + Zod all now included.
 
 ## M3 — Usage meter (Week 4)
-- [ ] `core/usage.ts`: authoritative-source read via adapter if available (record findings in api-notes) + estimation fallback from observed sends; "est." labeling; plan setting.
-- [ ] Floating widget (collapsible, position persisted) + popup display: session window %, weekly %, reset countdown when derivable.
-- [ ] Service worker: 1-min alarm + on-send check; 80% notification (configurable threshold), once per window.
-- [ ] Tests: estimation math, once-per-window alert logic.
+Scope cut per the M0 spike (api-notes §5): the authoritative `/usage` endpoint replaces the whole estimation tier — no DOM send hook, no `shared/limits.ts`, no "est." labels, no plan setting, no `usageEvents` table.
+- [x] `core/usage.ts`: authoritative read via `adapter.getUsage()`; normalization clamps and drops junk fields; degraded path emits `unavailable` (meter hides behind a calm message, never a guessed number). *(Content script polls 1/min on visible tabs and caches a numbers-only snapshot in `storage.local` so popup and worker can read without touching claude.ai.)*
+- [x] Floating widget (collapsible, position persisted via `settings` in storage.sync) + popup display: session %, weekly %, reset countdown from `resets_at`, honest "Updated Nm ago" staleness label in the popup. *(Vanilla DOM like the sync banner; loading state renders nothing rather than an empty frame.)*
+- [x] Service worker: 1-min alarm; threshold notification (configurable 50–95, default 80) at most once per window, keyed on `resets_at`; snapshots older than 10 min never alert. On-send check cut with the estimation tier. *(Worker never fetches claude.ai — it only reads the cached snapshot. Placeholder icons added under `public/icons/` because notifications require an iconUrl; real art is an M6 task. Not a permission change.)*
+- [x] Tests: normalization, refresh/degraded state transitions, once-per-window + staleness alert logic, threshold clamping, duration formatting. *(88 tests total across the suite.)*
+- [ ] **NOT DONE — definition of done #4: none of this has run against real claude.ai.** The `/usage` poll from the isolated world, widget drag/collapse on Claude's live DOM, and an end-to-end notification all need the same unpacked-extension session as the M1/M2 verification items. Alert gating behind Pro entitlements is deliberately deferred to M5 with the rest of the gate wiring.
+- [x] Bundle after M3: content script 61.30KB gz (budget 250KB) — adapter + usage core now in the content bundle.
 
 ## M4 — Organize + prompts + export (Week 5)
 - [ ] `folders`: storage.sync-backed store with chunking + quota handling; sidebar panel UI; drag-and-drop from native sidebar and search results; multi-folder membership; popup fallback view when DOM anchor missing.

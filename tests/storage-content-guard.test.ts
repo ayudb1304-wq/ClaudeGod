@@ -51,6 +51,10 @@ describe('storage content guard', () => {
       'licenseCache',
       'onboarding',
       'debugLog',
+      // M3: usage percentages/timestamps + last-alert marker. Numbers and
+      // ISO dates only — nothing content-flavoured can pass through them.
+      'usageCache',
+      'usageAlert',
     ]);
   });
 

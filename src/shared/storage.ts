@@ -14,8 +14,15 @@
 /** Synced across devices (Pro benefit). Quotas: 8KB per item, 100KB total. */
 export const SYNC_KEYS = ['folders', 'prompts', 'settings'] as const;
 
-/** Device-local. License cache lives here, never in sync (ARCHITECTURE §4). */
-export const LOCAL_KEYS = ['licenseCache', 'onboarding', 'debugLog'] as const;
+/**
+ * Device-local. License cache lives here, never in sync (ARCHITECTURE §4).
+ *
+ * usageCache holds only numbers and timestamps from /usage (utilization
+ * percentages, resets_at, fetchedAt) — metadata, no conversation content.
+ * usageAlert holds the resets_at of the last fired notification so "once per
+ * window" survives service-worker restarts.
+ */
+export const LOCAL_KEYS = ['licenseCache', 'onboarding', 'debugLog', 'usageCache', 'usageAlert'] as const;
 
 export type SyncKey = (typeof SYNC_KEYS)[number];
 export type LocalKey = (typeof LOCAL_KEYS)[number];

@@ -1,6 +1,9 @@
 import { mountSyncBanner } from './ui/syncBanner';
 import { mountSearchOverlay } from './ui/overlayHost';
+import { mountUsageWidget } from './ui/usageWidget';
 import { resumePendingJump } from './jumpToMessage';
+import { startUsagePolling } from '@/core/usage';
+import { getChatOrganization, getUsage } from '@/api/claudeAdapter';
 
 /**
  * Content script entry, bootstrapped on https://claude.ai/*.
@@ -17,6 +20,13 @@ function bootstrap(): void {
   mountSearchOverlay();
   // Finishes a jump whose navigation reloaded the content script.
   resumePendingJump();
+
+  // Usage polling starts without the M5 onboarding consent on purpose: that
+  // consent gates *indexing conversations* (FEATURES 7.2). /usage returns two
+  // account-level percentages, stores no conversation content, and is the
+  // headline feature users install for (PRD §4).
+  mountUsageWidget();
+  startUsagePolling({ getChatOrganization, getUsage });
 }
 
 // document_idle can still fire before body exists on slow navigations.

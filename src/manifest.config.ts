@@ -16,6 +16,14 @@ export default defineManifest({
   permissions: ['storage', 'notifications', 'alarms'],
   host_permissions: ['https://claude.ai/*'],
 
+  // Placeholder art until the M6 store-asset pass; the 128px file is also the
+  // notification icon (chrome.notifications requires an iconUrl).
+  icons: {
+    16: 'icons/icon-16.png',
+    48: 'icons/icon-48.png',
+    128: 'icons/icon-128.png',
+  },
+
   background: {
     service_worker: 'src/background/index.ts',
     type: 'module',

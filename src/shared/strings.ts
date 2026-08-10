@@ -19,7 +19,6 @@ export const strings = {
 
   popup: {
     title: APP_NAME,
-    scaffoldNotice: 'Scaffold running. Sync engine lands in M1.',
     openSettings: 'Settings',
   },
 
@@ -41,6 +40,25 @@ export const strings = {
     footerPro: 'Searching your full history.',
     footerFree: (cap: number) =>
       `Searching your last ${String(cap)} chats. Upgrade for full history.`,
+  },
+
+  usage: {
+    widgetTitle: 'Usage',
+    session: '5-hour session',
+    week: 'Weekly',
+    resetsIn: (duration: string) => `Resets in ${duration}`,
+    updatedAgo: (duration: string) => `Updated ${duration} ago`,
+    // Degraded path (ARCHITECTURE §5): calm, and never a guessed number.
+    unavailable: 'Usage info is taking a break. It will be back when Claude responds again.',
+    popupEmpty: 'Open claude.ai to load your usage.',
+    popupLoading: 'Loading usage…',
+    collapse: 'Collapse usage widget',
+    expand: 'Expand usage widget',
+    alertTitle: (percent: number) => `Claude session at ${String(percent)}%`,
+    alertMessage: (percent: number, reset: string | null) =>
+      reset
+        ? `You've used ${String(percent)}% of your 5-hour window. It resets in ${reset}.`
+        : `You've used ${String(percent)}% of your 5-hour window.`,
   },
 
   sync: {
