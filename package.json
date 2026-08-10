@@ -14,7 +14,9 @@
     "verify": "pnpm typecheck && pnpm lint && pnpm test"
   },
   "dependencies": {
-    "preact": "10.29.8"
+    "dexie": "4.4.4",
+    "preact": "10.29.8",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "2.7.1",

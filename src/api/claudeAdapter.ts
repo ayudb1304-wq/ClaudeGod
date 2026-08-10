@@ -1,3 +1,19 @@
+import {
+  ConversationDetailSchema,
+  ConversationListSchema,
+  ConversationSummarySchema,
+  OrganizationListSchema,
+  OrganizationSchema,
+  UsageSchema,
+  parseArrayLenient,
+  parseLenient,
+  type ConversationDetail,
+  type ConversationSummary,
+  type Organization,
+  type Usage,
+} from './types';
+import { setDegraded } from '@/shared/syncStatus';
+
 /**
  * THE ONLY MODULE PERMITTED TO TALK TO claude.ai (CLAUDE.md hard rule 2).
  *
@@ -6,20 +22,80 @@
  *     No POST/PUT/PATCH/DELETE to conversation or account endpoints, ever.
  *   - network-allowlist: claude.ai is the only host any src/ file may reference.
  *
- * M0 scaffold: URL builders and the surface area only. Throttling, backoff,
- * zod parsing, selfTest, and degraded status land in M1 (ARCHITECTURE §3).
- *
- * Endpoint shapes verified against a real account 2026-08-10; see
- * docs/api-notes.md for observed responses and the two divergences from
- * ARCHITECTURE §3 (message array is `chat_messages`; artifacts are derived from
- * `tool_use` blocks rather than returned separately). Still treat every shape as
- * unstable: these are internal endpoints with no compatibility contract.
+ * Endpoint shapes verified 2026-08-10; see docs/api-notes.md for observed
+ * responses and the divergences from ARCHITECTURE §3. Treat them as unstable
+ * regardless: these are internal endpoints with no compatibility contract.
  */
 
 const CLAUDE_ORIGIN = 'https://claude.ai';
 
-/** Sync status surfaced to the UI. Never throw to the user; degrade instead. */
-export type SyncStatus = 'idle' | 'syncing' | 'degraded';
+/** ARCHITECTURE §3 rule 2. Never hammer claude.ai (CLAUDE.md rule 7). */
+const MIN_REQUEST_INTERVAL_MS = 1000;
+const MAX_RETRIES = 4;
+const BASE_BACKOFF_MS = 1000;
+const MAX_CONSECUTIVE_FAILURES = 5;
+
+export class AdapterError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message);
+    this.name = 'AdapterError';
+  }
+}
+
+/** Thrown once the adapter gives up for this run and flips to degraded mode. */
+export class AdapterDegradedError extends AdapterError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AdapterDegradedError';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Throttle
+// ---------------------------------------------------------------------------
+
+let nextAllowedRequestAt = 0;
+let consecutiveFailures = 0;
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+/**
+ * Serialises requests to at most one per second.
+ *
+ * Deliberately a shared timestamp rather than a queue: every caller awaits its
+ * own slot, so concurrent callers space out instead of bursting. Backfill is a
+ * long background job and has no business being fast.
+ */
+async function acquireSlot(): Promise<void> {
+  const now = Date.now();
+  const waitFor = Math.max(0, nextAllowedRequestAt - now);
+  nextAllowedRequestAt = Math.max(now, nextAllowedRequestAt) + MIN_REQUEST_INTERVAL_MS;
+  if (waitFor > 0) await sleep(waitFor);
+}
+
+function isRetryable(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
+/** Honours Retry-After when present, else exponential backoff with jitter. */
+function backoffDelay(attempt: number, retryAfterHeader: string | null): number {
+  if (retryAfterHeader) {
+    const seconds = Number(retryAfterHeader);
+    if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+  }
+  const exponential = BASE_BACKOFF_MS * 2 ** attempt;
+  return exponential + Math.random() * 250;
+}
+
+// ---------------------------------------------------------------------------
+// Transport
+// ---------------------------------------------------------------------------
 
 function apiUrl(path: string): string {
   return `${CLAUDE_ORIGIN}/api${path}`;
@@ -27,57 +103,164 @@ function apiUrl(path: string): string {
 
 /**
  * Same-origin GET carrying the user's existing claude.ai session cookies.
- * Deliberately hard-codes the method: there is no parameter that could let a
- * caller turn this into a write.
+ *
+ * The method is hard-coded. There is no parameter a caller could use to turn
+ * this into a write, which is what makes hard rule 1 structural rather than a
+ * convention someone can forget.
+ *
+ * Verified in the M0 spike: same-origin fetch carries auth with no CSRF header,
+ * so the page-world proxy fallback in ARCHITECTURE §2 stays unbuilt.
  */
 async function getJson(path: string): Promise<unknown> {
-  const response = await fetch(apiUrl(path), {
-    method: 'GET',
-    credentials: 'include',
-    headers: { Accept: 'application/json' },
-  });
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    await acquireSlot();
 
-  if (!response.ok) {
-    throw new Error(`claude.ai returned ${String(response.status)} for ${path}`);
+    let response: Response;
+    try {
+      response = await fetch(apiUrl(path), {
+        method: 'GET',
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+    } catch {
+      // Network-level failure (offline, DNS, aborted). Retryable.
+      if (attempt === MAX_RETRIES) {
+        registerFailure();
+        throw new AdapterError(`Network request failed for ${path}`, undefined);
+      }
+      await sleep(backoffDelay(attempt, null));
+      continue;
+    }
+
+    if (response.ok) {
+      consecutiveFailures = 0;
+      try {
+        return (await response.json()) as unknown;
+      } catch {
+        registerFailure();
+        throw new AdapterError(`Malformed JSON from ${path}`, response.status);
+      }
+    }
+
+    if (isRetryable(response.status) && attempt < MAX_RETRIES) {
+      await sleep(backoffDelay(attempt, response.headers.get('Retry-After')));
+      continue;
+    }
+
+    registerFailure();
+    throw new AdapterError(`claude.ai returned ${String(response.status)} for ${path}`, response.status);
   }
 
-  return response.json();
-}
-
-/** GET /api/organizations */
-export function listOrganizations(): Promise<unknown> {
-  return getJson('/organizations');
+  registerFailure();
+  throw new AdapterError(`Exhausted retries for ${path}`);
 }
 
 /**
- * GET /api/organizations/{org}/usage
- *
- * Authoritative usage, found during the M0 spike. Returns `five_hour` and
- * `seven_day` objects each carrying `utilization` (0-100) and an ISO `resets_at`.
- * This is why M3 needs no client-side estimation; see docs/api-notes.md §5.
+ * ARCHITECTURE §3 rule 2: hard stop plus degraded mode after 5 consecutive
+ * failures. Counting consecutively rather than cumulatively means a single flaky
+ * request during a 300-conversation backfill does not poison the run.
  */
-export function getUsage(orgId: string): Promise<unknown> {
-  return getJson(`/organizations/${orgId}/usage`);
+function registerFailure(): void {
+  consecutiveFailures++;
+  if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+    setDegraded(`${String(consecutiveFailures)} consecutive request failures`);
+  }
 }
 
-/** GET /api/organizations/{org}/chat_conversations?limit&offset */
-export function listConversations(
+export function hasHitFailureLimit(): boolean {
+  return consecutiveFailures >= MAX_CONSECUTIVE_FAILURES;
+}
+
+/** Test-only. Module-level throttle state would otherwise leak between cases. */
+export function resetAdapterStateForTests(): void {
+  nextAllowedRequestAt = 0;
+  consecutiveFailures = 0;
+}
+
+// ---------------------------------------------------------------------------
+// Read operations (the entire public surface; nothing here mutates)
+// ---------------------------------------------------------------------------
+
+/** GET /api/organizations */
+export async function listOrganizations(): Promise<Organization[]> {
+  const raw = await getJson('/organizations');
+  return parseArrayLenient(OrganizationSchema, raw).items;
+}
+
+/**
+ * The org whose capabilities include "chat".
+ *
+ * Observed in the spike: accounts can carry several orgs, and an api-only org
+ * appeared first. Taking [0] would have been wrong about half the time.
+ */
+export async function getChatOrganization(): Promise<Organization | null> {
+  const orgs = await listOrganizations();
+  return orgs.find((org) => org.capabilities?.includes('chat')) ?? null;
+}
+
+/**
+ * GET /api/organizations/{org}/chat_conversations?limit&offset
+ *
+ * An offset past the end returns 200 with [], which is the pagination
+ * terminator. Callers loop until this returns an empty array.
+ */
+export async function listConversations(
   orgId: string,
   limit = 50,
   offset = 0,
-): Promise<unknown> {
+): Promise<ConversationSummary[]> {
   const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-  return getJson(`/organizations/${orgId}/chat_conversations?${query.toString()}`);
+  const raw = await getJson(`/organizations/${orgId}/chat_conversations?${query.toString()}`);
+  const { items } = parseArrayLenient(ConversationSummarySchema, raw);
+  return items;
 }
 
-/** GET /api/organizations/{org}/chat_conversations/{uuid} (full detail incl. messages) */
-export function getConversation(orgId: string, conversationUuid: string): Promise<unknown> {
+/** GET /api/organizations/{org}/chat_conversations/{uuid} (detail incl. messages) */
+export async function getConversation(
+  orgId: string,
+  conversationUuid: string,
+): Promise<ConversationDetail | null> {
   const query = new URLSearchParams({
     tree: 'True',
     rendering_mode: 'messages',
     render_all_tools: 'true',
   });
-  return getJson(
+  const raw = await getJson(
     `/organizations/${orgId}/chat_conversations/${conversationUuid}?${query.toString()}`,
   );
+  return parseLenient(ConversationDetailSchema, raw);
 }
+
+/**
+ * GET /api/organizations/{org}/usage
+ *
+ * Authoritative usage, found in the M0 spike: `five_hour` and `seven_day` each
+ * carry `utilization` (0-100) and an ISO `resets_at`. This is why M3 needs no
+ * client-side estimation. See docs/api-notes.md §5.
+ */
+export async function getUsage(orgId: string): Promise<Usage | null> {
+  const raw = await getJson(`/organizations/${orgId}/usage`);
+  return parseLenient(UsageSchema, raw);
+}
+
+/**
+ * ARCHITECTURE §3 rule 4: runs on startup, fetches one page, and flips to
+ * degraded on failure rather than letting the first real sync discover it.
+ */
+export async function selfTest(): Promise<boolean> {
+  try {
+    const org = await getChatOrganization();
+    if (!org) {
+      setDegraded('No organization with chat capability');
+      return false;
+    }
+    await listConversations(org.uuid, 1, 0);
+    return true;
+  } catch (error) {
+    setDegraded(error instanceof Error ? error.message : 'Self-test failed');
+    return false;
+  }
+}
+
+/** Exported for tests that need to assert list-parsing drops bad elements. */
+export const schemas = { ConversationListSchema, OrganizationListSchema };

@@ -64,14 +64,28 @@ Rules:
 ## 4. Data model (Dexie)
 
 ```ts
-// db.ts — schema v1
-conversations: 'uuid, updatedAt, title'          // + raw JSON blob, projectId?
-messages:      '[convUuid+index], convUuid'      // text, role, createdAt, hasArtifact
-artifacts:     'id, convUuid'                    // title, type, content
-syncState:     'key'                             // backfill checkpoint, lastSyncAt, schemaHash
-usageEvents:   '++id, ts'                        // observed message events for estimation
-searchMeta:    'key'                             // serialized MiniSearch index + version
+// db.ts — schema v1 (as built; see docs/api-notes.md for why it differs)
+conversations: 'uuid, updatedAt, title, indexedAt'  // indexedAt null until detail persisted
+messages:      '[convUuid+index], convUuid, uuid'   // text, sender, createdAt, hasArtifact
+artifacts:     '[convUuid+id], convUuid'            // title, type, content, possiblyStale
+syncState:     'key'                                // backfill checkpoint, lastSyncAt
+searchMeta:    'key'                                // serialized MiniSearch index + version
 ```
+
+Three deliberate departures from the original sketch, all driven by observed API
+behaviour rather than preference:
+
+1. **`artifacts` is keyed `[convUuid+id]`, not `id`.** Artifact ids come from the
+   model's own tool input and are only observed unique within a conversation.
+2. **`artifacts` is a derived table.** Artifacts are not an API entity; they are
+   `tool_use` blocks named `artifacts`, folded per `input.id` during sync
+   (`core/artifacts.ts`). A partial `update` command after the last full snapshot
+   sets `possiblyStale`.
+3. **`usageEvents` is dropped.** An authoritative usage endpoint exists, so there
+   are no estimation inputs to record. See §5.
+
+`conversations.indexedAt` exists so a conversation listed but not yet
+detail-fetched is retried rather than silently treated as complete.
 
 `chrome.storage.sync` (metadata only, chunked): `folders` (id, name, color, convIds[]), `prompts` (id, title, body, category), `settings`, `licenseCache` (in `storage.local`, not sync). Enforce: nothing from `messages`/`artifacts` may be written to any `chrome.storage` area — add a lint-style unit test on the storage wrapper.
 
@@ -79,11 +93,25 @@ searchMeta:    'key'                             // serialized MiniSearch index 
 
 ## 5. Usage meter logic
 
-1. **Preferred:** if account/limits endpoints (or response headers observed on the page's own traffic) expose window usage, read via adapter and display as authoritative.
-2. **Fallback estimation:** record a `usageEvents` row whenever the user sends a message (detect via DOM send-button/keydown hook — observation only). Estimate session-window consumption as messages-in-rolling-5h vs. a calibratable ceiling per plan (constants in `shared/limits.ts`, user-adjustable "my plan" setting). Label everything "est." Weekly cap likewise.
-3. Alerts: service worker checks on an `alarms` tick (1 min) + on each observed send; fires notification once per window at threshold.
+**Resolved by the M0 spike: an authoritative endpoint exists, so there is no estimation tier.**
 
-Accept imprecision; the value is "am I close?" not accounting-grade numbers. Do not reverse-engineer beyond passively reading what the app already shows/receives.
+`GET /api/organizations/{org}/usage` returns `five_hour` and `seven_day`, each with
+`utilization` (a number 0–100) and an ISO `resets_at`. Both the meter and the reset
+countdown are direct reads.
+
+1. Read via `adapter.getUsage()`. Display `utilization` as the percentage and
+   `resets_at` as the countdown. No "est." labelling is required.
+2. **No fallback estimation.** No DOM send hook, no `shared/limits.ts` ceilings,
+   no per-plan setting, no `usageEvents` table. Estimation is a real feature with
+   real bugs; building it speculatively when a true source exists is waste.
+3. Degraded path instead: if `/usage` is non-200 or unparseable, hide the meter
+   with a calm message. Never fall back to guessing a number.
+4. Alerts: service worker checks on an `alarms` tick; fires once per window at
+   threshold, keyed on `resets_at` so "once per window" is exact rather than
+   inferred.
+
+Ignore the internal codename keys in that response (`amber_ladder`, `tangelo`,
+and similar). They are the fields most likely to churn.
 
 ## 6. License flow (Dodo / Lemon Squeezy)
 

@@ -28,13 +28,11 @@ export const strings = {
     scaffoldNotice: 'Settings arrive in M5. This page exists so the extension boots end to end.',
   },
 
-  content: {
-    /** M0 hello-world badge. Replaced by the usage widget in M3. */
-    badgeLabel: APP_NAME,
-  },
-
   sync: {
     // Calm, actionable error copy (CLAUDE.md). Never blame the user, never alarm them.
     degraded: 'Sync paused: Claude changed something. Your indexed chats still work.',
+    progress: (indexed: number) => `Indexing your chats: ${String(indexed)} done`,
+    progressWithTotal: (indexed: number, total: number) =>
+      `Indexed ${String(indexed)}/${String(total)} chats`,
   },
 } as const;

@@ -16,11 +16,13 @@ Check off tasks as completed. Each task should end with passing checks per CLAUD
 - [x] Write read-only guard test for the (stub) adapter. *(Negative-tested: a DELETE in the adapter, and a claude.ai URL outside the adapter, both fail the build.)*
 
 ## M1 — Sync engine (Weeks 1–2)
-- [ ] `api/claudeAdapter.ts`: typed client per ARCHITECTURE §3 (throttle, backoff, zod parsing, selfTest, degraded status).
-- [ ] `core/db.ts`: Dexie schema v1 + storage-content guard test.
-- [ ] `core/sync.ts`: backfill state machine (paginate → fetch details → persist → checkpoint) resumable across restarts; incremental mode via `updated_at`.
-- [ ] Progress UI: minimal banner in content script ("Indexed N/M") + degraded-mode banner.
-- [ ] Fixture tests: happy path, malformed conversation, 429 storm, resume-from-checkpoint.
+- [x] `api/claudeAdapter.ts`: typed client per ARCHITECTURE §3 (throttle, backoff, zod parsing, selfTest, degraded status). *(Token-bucket 1 req/sec, honours Retry-After, exponential backoff + jitter on 429/5xx, degraded after 5 consecutive failures, single hard-coded GET transport.)*
+- [x] `core/db.ts`: Dexie schema v1 + storage-content guard test. *(Guard negative-tested. Schema diverges from ARCHITECTURE §4 in 3 documented ways; §4 updated to match.)*
+- [x] `core/sync.ts`: backfill state machine (paginate → fetch details → persist → checkpoint) resumable across restarts; incremental mode via `updated_at`. *(Checkpoints per conversation, not per page, so an abort mid-page still resumes. Depends on a `SyncStore` port so tests need no IndexedDB.)*
+- [x] Progress UI: minimal banner in content script ("Indexed N/M") + degraded-mode banner.
+- [x] Fixture tests: happy path, malformed conversation, 429 storm, resume-from-checkpoint. *(43 tests total. Also: abort, incremental skip, re-sync on changed `updated_at`, unreadable checkpoint, artifact version folding.)*
+- [ ] **NOT DONE — definition of done #4: none of this has run against real claude.ai.** Every test is against fixtures. Verify a real backfill before trusting M2 search results. Blocked on the same unpacked-extension load as the content-script auth check.
+- [ ] Watch item: `dexie` + `zod` are not yet in the content-script bundle because sync is not wired to a trigger. Re-check the 250KB gz budget once it is (currently 0.70KB gz).
 
 ## M2 — Search (Week 3)
 - [ ] `core/searchIndex.ts`: build MiniSearch from Dexie; chunk long messages; serialize/restore; incremental add; free-tier 100-conversation rotation behind `entitlements` stub.
