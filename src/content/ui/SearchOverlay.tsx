@@ -19,6 +19,8 @@ export interface SearchOverlayProps {
   cap: number | null;
   onSearch: (query: string) => SearchHit[];
   onSelect: (hit: SearchHit) => void;
+  /** Starts a drag of this conversation towards the folder panel. */
+  onDragHit: (hit: SearchHit, transfer: DataTransfer | null) => void;
   onClose: () => void;
 }
 
@@ -57,6 +59,7 @@ export function SearchOverlay({
   cap,
   onSearch,
   onSelect,
+  onDragHit,
   onClose,
 }: SearchOverlayProps) {
   const [query, setQuery] = useState('');
@@ -131,6 +134,11 @@ export function SearchOverlay({
             role="option"
             aria-selected={i === active}
             class={i === active ? 'cg-row cg-row-active' : 'cg-row'}
+            // FEATURES 4.1: results are a drag source for the folder panel.
+            draggable
+            onDragStart={(event) => {
+              onDragHit(hit, event.dataTransfer);
+            }}
             onMouseEnter={() => {
               setActive(i);
             }}

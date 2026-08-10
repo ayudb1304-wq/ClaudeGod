@@ -15,16 +15,25 @@ export interface UsageWidgetSettings {
   bottom: number;
 }
 
+export interface FolderPanelSettings {
+  /** Whether the drawer is expanded. Its handle is always visible. */
+  open: boolean;
+}
+
 export interface Settings {
   /** FEATURES 3.2: configurable 50–95, default 80. */
   alertThresholdPercent: number;
   usageWidget: UsageWidgetSettings;
+  folderPanel: FolderPanelSettings;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   alertThresholdPercent: 80,
   // Default sits above the sync banner's bottom-right spot so they never overlap.
   usageWidget: { collapsed: false, right: 16, bottom: 64 },
+  // Closed by default: an extension that rearranges Claude's layout on install
+  // is an extension people uninstall.
+  folderPanel: { open: false },
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -42,6 +51,7 @@ function booleanOr(value: unknown, fallback: boolean): boolean {
 export function narrowSettings(raw: unknown): Settings {
   const root = asRecord(raw);
   const widget = asRecord(root['usageWidget']);
+  const panel = asRecord(root['folderPanel']);
   const defaults = DEFAULT_SETTINGS;
   return {
     alertThresholdPercent: numberOr(root['alertThresholdPercent'], defaults.alertThresholdPercent),
@@ -49,6 +59,9 @@ export function narrowSettings(raw: unknown): Settings {
       collapsed: booleanOr(widget['collapsed'], defaults.usageWidget.collapsed),
       right: numberOr(widget['right'], defaults.usageWidget.right),
       bottom: numberOr(widget['bottom'], defaults.usageWidget.bottom),
+    },
+    folderPanel: {
+      open: booleanOr(panel['open'], defaults.folderPanel.open),
     },
   };
 }

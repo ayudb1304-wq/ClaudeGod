@@ -1,6 +1,8 @@
 import { mountSyncBanner } from './ui/syncBanner';
 import { mountSearchOverlay } from './ui/overlayHost';
 import { mountUsageWidget } from './ui/usageWidget';
+import { mountFolderPanel } from './ui/panelHost';
+import { mountSlashPicker } from './ui/slashPicker';
 import { resumePendingJump } from './jumpToMessage';
 import { startUsagePolling } from '@/core/usage';
 import { getChatOrganization, getUsage } from '@/api/claudeAdapter';
@@ -20,6 +22,11 @@ function bootstrap(): void {
   mountSearchOverlay();
   // Finishes a jump whose navigation reloaded the content script.
   resumePendingJump();
+
+  // Folders and prompts (M4): both read chrome.storage.sync only. Neither
+  // touches claude.ai, so neither waits on the M5 indexing consent.
+  mountFolderPanel();
+  mountSlashPicker();
 
   // Usage polling starts without the M5 onboarding consent on purpose: that
   // consent gates *indexing conversations* (FEATURES 7.2). /usage returns two

@@ -102,6 +102,15 @@ function apiUrl(path: string): string {
 }
 
 /**
+ * The web address of a conversation, for links opened outside a claude.ai tab
+ * (the popup). Not an HTTP call, but hard rule 2 puts every claude.ai URL in
+ * this module, so there is exactly one place an origin change has to land.
+ */
+export function conversationWebUrl(convUuid: string): string {
+  return `${CLAUDE_ORIGIN}/chat/${convUuid}`;
+}
+
+/**
  * Same-origin GET carrying the user's existing claude.ai session cookies.
  *
  * The method is hard-coded. There is no parameter a caller could use to turn
@@ -148,7 +157,10 @@ async function getJson(path: string): Promise<unknown> {
     }
 
     registerFailure();
-    throw new AdapterError(`claude.ai returned ${String(response.status)} for ${path}`, response.status);
+    throw new AdapterError(
+      `claude.ai returned ${String(response.status)} for ${path}`,
+      response.status,
+    );
   }
 
   registerFailure();

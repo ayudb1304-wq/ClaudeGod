@@ -24,7 +24,7 @@ export const strings = {
 
   options: {
     title: `${APP_NAME} settings`,
-    scaffoldNotice: 'Settings arrive in M5. This page exists so the extension boots end to end.',
+    scaffoldNotice: 'Shortcuts, sync controls, and licensing arrive in the next release.',
   },
 
   search: {
@@ -59,6 +59,66 @@ export const strings = {
       reset
         ? `You've used ${String(percent)}% of your 5-hour window. It resets in ${reset}.`
         : `You've used ${String(percent)}% of your 5-hour window.`,
+  },
+
+  folders: {
+    title: 'Folders',
+    open: 'Open folders',
+    close: 'Close folders',
+    empty: 'No folders yet. Create one, then drag chats in.',
+    emptyFolder: 'Empty — drag a chat here.',
+    create: 'New folder',
+    createPlaceholder: 'Folder name',
+    add: 'Add',
+    cancel: 'Cancel',
+    rename: 'Rename folder',
+    remove: 'Delete folder',
+    removeChat: 'Remove from folder',
+    confirmDelete: (name: string) => `Delete "${name}"? Your chats stay where they are.`,
+    dropHint: 'Drop to add',
+    unknownChat: 'Not in your local copy yet',
+    count: (n: number) => (n === 1 ? '1 chat' : `${String(n)} chats`),
+    limitReached: (limit: number) =>
+      `Free plan includes ${String(limit)} folders. Upgrade for unlimited.`,
+    // storage.sync is small by design; say what to do, not what went wrong.
+    quotaError: 'Synced storage is full. Remove a few chats from folders and try again.',
+    saveError: 'That change did not save. Try again in a moment.',
+  },
+
+  prompts: {
+    title: 'Prompts',
+    empty: 'No saved prompts yet.',
+    emptyHint: 'Add prompts in settings, then type / in Claude to insert one.',
+    noMatches: 'No prompts match.',
+    manage: 'Manage prompts',
+    add: 'New prompt',
+    save: 'Save',
+    cancel: 'Cancel',
+    edit: 'Edit',
+    remove: 'Delete',
+    fieldTitle: 'Title',
+    fieldBody: 'Prompt',
+    fieldCategory: 'Category (optional)',
+    bodyHint: 'Use {{placeholders}} for parts you fill in each time.',
+    limitReached: (limit: number) =>
+      `Free plan includes ${String(limit)} prompts. Upgrade for unlimited.`,
+    variablesTitle: 'Fill in the blanks',
+    variablesInsert: 'Insert',
+    // Free tier inserts the raw body, placeholders and all (FEATURES 5.1).
+    variablesPro: 'Filling placeholders is a Pro feature. Inserting the prompt as written.',
+    quotaError: 'Synced storage is full. Delete a prompt or shorten one, then try again.',
+  },
+
+  exportUi: {
+    chat: 'Export this chat',
+    all: 'Export all chats (.zip)',
+    folder: 'Export folder (.zip)',
+    working: (done: number, total: number) => `Exporting ${String(done)}/${String(total)}…`,
+    empty: 'Nothing to export yet.',
+    // Export reads the local mirror, so an unsynced chat genuinely has no data.
+    notIndexed: 'This chat is not in your local copy yet.',
+    failed: 'Export failed. Try again in a moment.',
+    proOnly: 'Bulk export is a Pro feature.',
   },
 
   sync: {

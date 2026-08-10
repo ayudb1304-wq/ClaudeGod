@@ -79,6 +79,27 @@ export class ClaudeGodDb extends Dexie {
 
 export const db = new ClaudeGodDb();
 
+/**
+ * Titles for a set of conversations, for surfaces that only hold ids.
+ *
+ * Folders store ids and nothing else (hard rule 4 keeps titles out of
+ * chrome.storage), so the panel resolves display names here. A conversation the
+ * mirror has not seen simply has no entry, and the UI says so.
+ */
+export async function getConversationTitles(
+  uuids: string[],
+  database: ClaudeGodDb = db,
+): Promise<Map<string, string>> {
+  const titles = new Map<string, string>();
+  if (uuids.length === 0) return titles;
+
+  const rows = await database.conversations.bulkGet(uuids);
+  for (const row of rows) {
+    if (row) titles.set(row.uuid, row.title);
+  }
+  return titles;
+}
+
 // ---------------------------------------------------------------------------
 // Persistence port
 // ---------------------------------------------------------------------------
