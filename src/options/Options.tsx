@@ -1,8 +1,10 @@
 import { strings } from '@/shared/strings';
+import { PromptLibrary } from './PromptLibrary';
 
 /**
- * Settings page. M0 scaffold only. Real controls (shortcuts, widget, alert
- * threshold, pause sync, delete-all-data, license) land in M5 per FEATURES 8.1.
+ * Settings page. Hosts the prompt library (M4); the remaining controls
+ * (shortcuts, widget, alert threshold, pause sync, delete-all-data, license)
+ * land in M5 per FEATURES 8.1.
  */
 export function Options() {
   return (
@@ -16,6 +18,7 @@ export function Options() {
     >
       <h1 style={{ fontSize: 20, margin: '0 0 8px' }}>{strings.options.title}</h1>
       <p style={{ color: '#555' }}>{strings.options.scaffoldNotice}</p>
+      <PromptLibrary />
       <p style={{ marginTop: 24, fontSize: 12, color: '#888' }}>{strings.disclaimer}</p>
     </main>
   );
