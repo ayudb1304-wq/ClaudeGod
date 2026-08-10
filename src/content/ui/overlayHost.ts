@@ -33,6 +33,18 @@ function ensureHost(): { shadow: ShadowRoot; mount: HTMLDivElement } {
   document.body.appendChild(host);
 
   const root = host.attachShadow({ mode: 'open' });
+
+  // Claude's app redirects loose keystrokes into its composer. Because shadow
+  // retargeting makes our focused input look like a plain <div> to their
+  // listeners, their redirect wins and typing lands in the composer. Stop
+  // keyboard/input events at the host boundary so page-level bubble listeners
+  // never see typing that belongs to the overlay.
+  for (const type of ['keydown', 'keyup', 'keypress', 'beforeinput', 'input'] as const) {
+    host.addEventListener(type, (event) => {
+      event.stopPropagation();
+    });
+  }
+
   const style = document.createElement('style');
   style.textContent = OVERLAY_STYLES;
   root.appendChild(style);
@@ -69,6 +81,15 @@ function renderOverlay(): void {
   );
 }
 
+/** Re-focuses the overlay input if the page steals focus while we are open. */
+function onFocusIn(event: FocusEvent): void {
+  if (!isOpen) return;
+  const host = hostElement();
+  if (!host || !(event.target instanceof Node) || host.contains(event.target)) return;
+  const input = mountPoint?.querySelector('input');
+  input?.focus();
+}
+
 async function open(): Promise<void> {
   if (isOpen) return;
   isOpen = true;
@@ -76,6 +97,7 @@ async function open(): Promise<void> {
   ensureHost();
   const host = hostElement();
   if (host) host.style.display = 'block';
+  document.addEventListener('focusin', onFocusIn);
   renderOverlay();
 
   if (!index) {
@@ -95,6 +117,7 @@ async function open(): Promise<void> {
 function close(): void {
   if (!isOpen) return;
   isOpen = false;
+  document.removeEventListener('focusin', onFocusIn);
   const host = hostElement();
   if (host) host.style.display = 'none';
   if (mountPoint) render(null, mountPoint);
