@@ -2,6 +2,15 @@ import { runSync } from '@/core/sync';
 import { createDexieSyncStore, db } from '@/core/db';
 import { loadIndexableConversations, loadOrBuildIndex } from '@/core/searchStore';
 import { getChatOrganization, getConversation, listConversations } from '@/api/claudeAdapter';
+import { unzipSync } from 'fflate';
+import { createPrompt } from '@/core/prompts';
+import { loadFolders } from '@/core/folders';
+import { getEntitlements, setPro } from '@/core/entitlements';
+import {
+  createDexieExportSource,
+  exportConversation,
+  exportConversationsZip,
+} from '@/core/exporter';
 import { dumpAllStorageForDebug, setLocal } from '@/shared/storage';
 import { updateSettings } from '@/shared/settings';
 
@@ -22,7 +31,7 @@ import { updateSettings } from '@/shared/settings';
  *     e.data?.type === 'CLAUDEGOD_DEV_RESULT' && console.log(e.data))
  *
  * Commands: dump, dbStats, runSync, setThreshold, setUsageCache,
- * clearAlertMarker.
+ * clearAlertMarker, seedPrompt, folders, exportChat, setPro, exportZip.
  */
 
 interface DevCommand {
@@ -84,6 +93,52 @@ async function handle(cmd: string, arg: unknown): Promise<unknown> {
     case 'clearAlertMarker':
       await setLocal('usageAlert', null);
       return 'ok';
+    case 'seedPrompt': {
+      // The prompt library's own CRUD lives on the options page, which is not
+      // reachable from a claude.ai tab; this seeds one so the slash picker can
+      // be verified on the real composer.
+      const draft = arg as { title?: string; body?: string } | null;
+      const prompt = await createPrompt({
+        title: draft?.title ?? 'Dev prompt',
+        body: draft?.body ?? 'Summarise this thread in {{style}} style.',
+      });
+      return { id: prompt.id, title: prompt.title };
+    }
+    case 'folders':
+      return (await loadFolders()).map((folder) => ({
+        name: folder.name,
+        color: folder.color,
+        convIds: folder.convIds.length,
+      }));
+    case 'exportChat': {
+      // Runs the real export path and reports its shape, without a download
+      // dialog automation cannot dismiss.
+      const file = await exportConversation(typeof arg === 'string' ? arg : '');
+      return file ? { filename: file.filename, length: String(file.data).length } : null;
+    }
+    case 'setPro': {
+      // Flips this tab's entitlements so Pro-gated paths (bulk export, prompt
+      // variables) can be exercised before the M5 license client exists. In
+      // memory only, and only in this context — it grants nothing, it just
+      // lets the gated code run once.
+      setPro(arg === true);
+      return { isPro: getEntitlements().isPro };
+    }
+    case 'exportZip': {
+      // Bulk export end to end, minus the download dialog: reports the ZIP's
+      // size and entry list so the layout can be checked.
+      const uuids = Array.isArray(arg)
+        ? arg.filter((value): value is string => typeof value === 'string')
+        : (await createDexieExportSource().listConversationUuids()).slice(0, 25);
+      const file = await exportConversationsZip(uuids);
+      const bytes = file.data as Uint8Array;
+      return {
+        filename: file.filename,
+        conversations: uuids.length,
+        bytes: bytes.length,
+        entries: Object.keys(unzipSync(bytes)).slice(0, 8),
+      };
+    }
     default:
       return { error: `unknown command: ${cmd}` };
   }
