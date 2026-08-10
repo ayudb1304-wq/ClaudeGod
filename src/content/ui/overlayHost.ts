@@ -4,8 +4,10 @@ import { SearchOverlay, type OverlayStatus } from './SearchOverlay';
 import { loadOrBuildIndex } from '@/core/searchStore';
 import { getEntitlements } from '@/core/entitlements';
 import { jumpToMessage } from '../jumpToMessage';
+import { writeConversationDrag } from '../dragData';
 import type { SearchIndex, SearchHit } from '@/core/searchIndex';
 import { OVERLAY_STYLES } from './overlayStyles';
+import { shieldKeyboardEvents } from './shieldKeyboard';
 
 /**
  * Mounts the search overlay into a shadow root.
@@ -34,16 +36,9 @@ function ensureHost(): { shadow: ShadowRoot; mount: HTMLDivElement } {
 
   const root = host.attachShadow({ mode: 'open' });
 
-  // Claude's app redirects loose keystrokes into its composer. Because shadow
-  // retargeting makes our focused input look like a plain <div> to their
-  // listeners, their redirect wins and typing lands in the composer. Stop
-  // keyboard/input events at the host boundary so page-level bubble listeners
-  // never see typing that belongs to the overlay.
-  for (const type of ['keydown', 'keyup', 'keypress', 'beforeinput', 'input'] as const) {
-    host.addEventListener(type, (event) => {
-      event.stopPropagation();
-    });
-  }
+  // Claude redirects loose keystrokes into its composer, and shadow retargeting
+  // hides our focused input from their check. See shieldKeyboard.ts.
+  shieldKeyboardEvents(host);
 
   const style = document.createElement('style');
   style.textContent = OVERLAY_STYLES;
@@ -74,6 +69,14 @@ function renderOverlay(): void {
       onSelect: (hit: SearchHit) => {
         close();
         jumpToMessage(hit.convUuid, hit.messageUuid, hit.snippet);
+      },
+      onDragHit: (hit: SearchHit, transfer: DataTransfer | null) => {
+        if (!transfer) return;
+        writeConversationDrag(transfer, hit.convUuid);
+        // The overlay covers the folder panel, so it has to get out of the way —
+        // but only after the browser has taken its drag image, or the drag
+        // aborts with the source element.
+        setTimeout(close, 0);
       },
       onClose: close,
     }),
