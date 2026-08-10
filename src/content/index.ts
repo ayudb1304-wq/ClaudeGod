@@ -1,4 +1,6 @@
 import { mountSyncBanner } from './ui/syncBanner';
+import { mountSearchOverlay } from './ui/overlayHost';
+import { resumePendingJump } from './jumpToMessage';
 
 /**
  * Content script entry, bootstrapped on https://claude.ai/*.
@@ -12,6 +14,9 @@ import { mountSyncBanner } from './ui/syncBanner';
  */
 function bootstrap(): void {
   mountSyncBanner();
+  mountSearchOverlay();
+  // Finishes a jump whose navigation reloaded the content script.
+  resumePendingJump();
 }
 
 // document_idle can still fire before body exists on slow navigations.

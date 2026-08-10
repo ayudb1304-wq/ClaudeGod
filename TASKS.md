@@ -25,10 +25,13 @@ Check off tasks as completed. Each task should end with passing checks per CLAUD
 - [ ] Watch item: `dexie` + `zod` are not yet in the content-script bundle because sync is not wired to a trigger. Re-check the 250KB gz budget once it is (currently 0.70KB gz).
 
 ## M2 — Search (Week 3)
-- [ ] `core/searchIndex.ts`: build MiniSearch from Dexie; chunk long messages; serialize/restore; incremental add; free-tier 100-conversation rotation behind `entitlements` stub.
-- [ ] Cmd/Ctrl+K overlay UI: input, ranked results (title/snippet/date, match highlight), keyboard nav, empty/zero states; shortcut configurable + non-conflicting fallback.
-- [ ] Jump-to-message: open conversation, scroll to matched message, flash highlight; graceful fallback (open conversation top) if message anchor not found.
-- [ ] Perf check vs. budget (<200ms @1k convs); move indexing to idle/worker if backfill janks UI.
+- [x] `core/searchIndex.ts`: build MiniSearch from Dexie; chunk long messages; serialize/restore; incremental add; free-tier 100-conversation rotation behind `entitlements` stub. *(One document per message chunk, not per conversation, so BM25 stays meaningful and hits carry a message to jump to. 1KB chunks with 100-char overlap so phrases survive boundaries.)*
+- [x] Cmd/Ctrl+K overlay UI: input, ranked results (title/snippet/date, match highlight), keyboard nav, empty/zero states; shortcut configurable + non-conflicting fallback. *(Preact in a shadow root so Claude's cascade and ours cannot collide. Cmd+K yields when an editable element has focus; Cmd+Shift+K always opens.)*
+- [x] Jump-to-message: open conversation, scroll to matched message, flash highlight; graceful fallback (open conversation top) if message anchor not found. *(Degraded-first: tries uuid attributes, then a text scan, then gives up silently after 6s. Claude's DOM anchors were never verified, so nothing here assumes they exist.)*
+- [x] Perf check vs. budget (<200ms @1k convs); move indexing to idle/worker if backfill janks UI. *(Measured 17ms avg query over 1,000 conversations / 8,000 chunks. Build 510ms, serialized index 1.9MB. No worker needed yet.)*
+- [ ] **NOT DONE — definition of done #4: the overlay has never rendered on real claude.ai.** Keyboard capture, shadow-root isolation and jump-to-message all touch Claude's live DOM and none of it is fixture-testable. Verify before M3.
+- [ ] Deferred: free-tier cap is enforced at index build, not on incremental upsert. Not reachable until sync has a trigger (M5). TODO recorded in `core/searchStore.ts`.
+- [x] Bundle after M2: content script 42.93KB gz (budget 250KB). Preact + MiniSearch + Dexie + Zod all now included.
 
 ## M3 — Usage meter (Week 4)
 - [ ] `core/usage.ts`: authoritative-source read via adapter if available (record findings in api-notes) + estimation fallback from observed sends; "est." labeling; plan setting.

@@ -28,6 +28,21 @@ export const strings = {
     scaffoldNotice: 'Settings arrive in M5. This page exists so the extension boots end to end.',
   },
 
+  search: {
+    placeholder: 'Search your Claude chats',
+    ariaLabel: 'Search your Claude chats',
+    loading: 'Getting your chats ready…',
+    untitled: 'Untitled chat',
+    prompt: (indexed: number) =>
+      indexed > 0
+        ? `Type to search ${String(indexed)} indexed chats.`
+        : 'Nothing indexed yet. Start indexing from the extension popup.',
+    noResults: (query: string) => `No matches for "${query}". Try fewer or different words.`,
+    footerPro: 'Searching your full history.',
+    footerFree: (cap: number) =>
+      `Searching your last ${String(cap)} chats. Upgrade for full history.`,
+  },
+
   sync: {
     // Calm, actionable error copy (CLAUDE.md). Never blame the user, never alarm them.
     degraded: 'Sync paused: Claude changed something. Your indexed chats still work.',
