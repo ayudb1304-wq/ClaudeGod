@@ -27,6 +27,13 @@ function bootstrap(): void {
   // headline feature users install for (PRD §4).
   mountUsageWidget();
   startUsagePolling({ getChatOrganization, getUsage });
+
+  // Compile-time gate: a plain `pnpm build` erases this branch and the module.
+  if (import.meta.env.VITE_DEV_HOOKS === '1') {
+    void import('./devHooks').then((hooks) => {
+      hooks.installDevHooks();
+    });
+  }
 }
 
 // document_idle can still fire before body exists on slow navigations.

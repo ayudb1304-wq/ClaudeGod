@@ -50,3 +50,17 @@ export async function clearAllStorage(): Promise<void> {
   await chrome.storage.sync.clear();
   await chrome.storage.local.clear();
 }
+
+/**
+ * Full dump for the dev-hooks bridge (VITE_DEV_HOOKS builds only). Local
+ * debugging aid; never transmitted anywhere.
+ */
+export async function dumpAllStorageForDebug(): Promise<{
+  sync: Record<string, unknown>;
+  local: Record<string, unknown>;
+}> {
+  return {
+    sync: await chrome.storage.sync.get(null),
+    local: await chrome.storage.local.get(null),
+  };
+}
