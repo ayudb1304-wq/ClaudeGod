@@ -43,8 +43,9 @@ Index artifact titles/content separately; "Artifacts" tab in overlay.
 
 ### 3.1 Usage meter — P0 (F)
 - [ ] Small floating widget on claude.ai (collapsible, position remembered) + toolbar popup showing: 5-hour session window usage and weekly cap usage.
-- [ ] Data source order: (1) any usage fields exposed by the account/limits endpoints the web app itself polls; (2) fallback: client-side estimation from message counts/timestamps observed since install. Estimated values are labeled "est."
-- [ ] Countdown to window reset shown when known/derivable.
+- [ ] Data source: the authoritative `GET /api/organizations/{org}/usage` endpoint (verified in the M0 spike, docs/api-notes.md §5), read via the adapter. `utilization` is displayed as-is. There is no client-side estimation tier and no "est." labeling in v1 — scope cut recorded in api-notes §5.
+- [ ] Degraded path: if `/usage` is non-200 or unparseable, hide the meter behind a calm message; never fall back to guessing a number.
+- [ ] Countdown to window reset shown when `resets_at` is present.
 - [ ] Never blocks or delays the user's actual chatting; passive display only.
 
 ### 3.2 Limit alerts — P0 (P)

@@ -100,12 +100,19 @@ parent_message_uuid, sender, sync_sources, text, truncated, updated_at, uuid`
   `rendering_mode=messages` the array appears already linearised, so branch
   handling can stay out of scope for v1.
 
-### Decision needed before M2/M4
+### Decision: thinking blocks are excluded by default (2026-08-10)
 
-`thinking` blocks are extended-thinking content. They should almost certainly be
-**excluded from both the search index and export by default** (noisy for search,
-and users generally do not expect it in an exported transcript). Consider an
-opt-in setting later. Not a P0 blocker, but pick a default deliberately.
+`thinking` blocks are **excluded from the search index and from export by
+default**: they are noise in search results, and users do not expect internal
+reasoning in an exported transcript. An opt-in setting can come post-launch if
+anyone asks. Implemented in `core/sync.ts` (`toMessageRecords` keeps only `text`
+blocks when flattening) — the exporter (M4) must apply the same filter to
+`content` blocks.
+
+**Verification caveat:** the stored text prefers the API's own flattened `text`
+field, and it has not been confirmed on a real account whether that field
+includes thinking content. Check during the M1 real-backfill verification; if it
+does, derive text from `content` blocks instead of trusting `text`.
 
 ## 4. Artifacts
 

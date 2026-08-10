@@ -52,10 +52,11 @@ Known internal endpoints (verify shapes in the M1 spike; treat all as unstable):
 
 - `GET /api/organizations` → find org UUID with chat capability
 - `GET /api/organizations/{org}/chat_conversations?limit=50&offset=N` → paginated list (`uuid`, `name`, `updated_at`, ...)
-- `GET /api/organizations/{org}/chat_conversations/{uuid}?tree=True&rendering_mode=messages&render_all_tools=true` → full conversation detail incl. messages/artifacts
+- `GET /api/organizations/{org}/chat_conversations/{uuid}?tree=True&rendering_mode=messages&render_all_tools=true` → full conversation detail. **Verified divergences (docs/api-notes.md §3):** the message array is `chat_messages` (not `messages`), and `sender` is `"human"`/`"assistant"` (not `"user"`). Artifacts are not an entity here; they are `tool_use` blocks named `artifacts` (§4).
+- `GET /api/organizations/{org}/usage` → authoritative usage windows (`five_hour`, `seven_day`); see §5.
 
 Rules:
-1. Read-only. The adapter exposes `listConversations`, `getConversation`, `getAccountInfo` — nothing mutating. A unit test asserts no other HTTP verbs exist in the module.
+1. Read-only. The adapter exposes only non-mutating reads (`listOrganizations`, `getChatOrganization`, `listConversations`, `getConversation`, `getUsage`, `selfTest`). A unit test asserts no other HTTP verbs exist in the module.
 2. Throttle ≤1 req/sec (token bucket), exponential backoff on 429/5xx, hard stop + degraded mode after 5 consecutive failures.
 3. Defensive parsing: every response passes through a lenient parser (zod with `.passthrough()` and optionals); missing fields degrade features, never throw to UI.
 4. `adapter.selfTest()` runs on startup: fetch 1 page of conversations; on failure set `syncStatus="degraded"` and surface the banner. Log the failing shape to local storage for debugging (never transmitted).
