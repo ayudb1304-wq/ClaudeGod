@@ -91,8 +91,12 @@ parent_message_uuid, sender, sync_sources, text, truncated, updated_at, uuid`
 
 - **`sender` is `"human"` or `"assistant"`** (not `"user"`). Exporter must map this.
 - Each message carries **both** `text` (a flattened string) and `content` (an
-  array of typed blocks). `text` is the cheap path for the search index;
-  `content` is required for faithful export.
+  array of typed blocks). **CORRECTION (verified 2026-08-10 on a real 298-chat
+  backfill): `text` is `""` on every message sampled (500/500).** The flattened
+  field exists but is not populated; the payload lives exclusively in `content`
+  blocks. Sync must always derive text from `text`-type blocks — treat an empty
+  `text` exactly like a missing one (`core/sync.ts` does since the M3
+  verification pass).
 - Observed `content[].type` values: **`text`, `tool_use`, `tool_result`,
   `thinking`**.
 - `truncated` exists as a field. Check it before trusting message text.
@@ -109,10 +113,10 @@ anyone asks. Implemented in `core/sync.ts` (`toMessageRecords` keeps only `text`
 blocks when flattening) — the exporter (M4) must apply the same filter to
 `content` blocks.
 
-**Verification caveat:** the stored text prefers the API's own flattened `text`
-field, and it has not been confirmed on a real account whether that field
-includes thinking content. Check during the M1 real-backfill verification; if it
-does, derive text from `content` blocks instead of trusting `text`.
+**Caveat resolved (2026-08-10):** moot — the real API ships `text: ""` (see §3
+correction above), so stored text always comes from our own block filter, which
+keeps only `text`-type blocks. Thinking content structurally cannot enter the
+index or exports.
 
 ## 4. Artifacts
 

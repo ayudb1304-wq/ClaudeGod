@@ -94,7 +94,10 @@ function toMessageRecords(detail: ConversationDetail): MessageRecord[] {
       index: message.index ?? position,
       uuid: message.uuid,
       sender: message.sender ?? 'unknown',
-      text: message.text ?? fallbackText,
+      // An empty `text` must fall through too, not just a missing one: the
+      // real API ships messages whose flattened text is "" while the payload
+      // lives in content blocks.
+      text: message.text?.trim() ? message.text : fallbackText,
       createdAt: message.created_at ?? null,
       hasArtifact: blocks.some((block) => block.type === 'tool_use' && block.name === 'artifacts'),
       truncated: message.truncated ?? false,
