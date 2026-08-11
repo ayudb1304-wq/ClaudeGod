@@ -92,7 +92,6 @@ ${shadowTheme()}
   background: var(--cg-accent);
   transition: width var(--cg-motion), background var(--cg-motion);
 }
-.cg-w-fill[data-level="warn"] { background: var(--cg-warn); }
 .cg-w-fill[data-level="danger"] { background: var(--cg-danger); }
 
 .cg-w-note {

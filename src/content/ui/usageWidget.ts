@@ -27,10 +27,16 @@ const EDGE_MARGIN_PX = 8;
 /** Countdown granularity. Data refresh is the poller's job, not the ticker's. */
 const TICK_MS = 30_000;
 
-function level(utilization: number): 'ok' | 'warn' | 'danger' {
-  if (utilization >= 90) return 'danger';
-  if (utilization >= 75) return 'warn';
-  return 'ok';
+/*
+ * Two tiers, not three. The brand colour is orange, so an amber "warning" step
+ * between orange and red would read as the same colour twice and carry no
+ * information. The meter is brand-coloured until it matters, then red.
+ *
+ * 80 matches the default alert threshold, so the bar turns red exactly when a
+ * Pro user would be notified.
+ */
+function level(utilization: number): 'ok' | 'danger' {
+  return utilization >= 80 ? 'danger' : 'ok';
 }
 
 interface MeterRow {

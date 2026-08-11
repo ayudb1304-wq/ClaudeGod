@@ -24,7 +24,7 @@ export function UpgradeLink({
       href={url}
       target="_blank"
       rel="noreferrer noopener"
-      style={{ fontSize: 12, color: '#4a69bd' }}
+      class="cg-accent-link"
     >
       {label}
     </a>

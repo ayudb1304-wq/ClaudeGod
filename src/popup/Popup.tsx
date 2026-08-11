@@ -32,10 +32,16 @@ type PopupUsageState =
   | { kind: 'empty' }
   | { kind: 'ok'; snapshot: UsageSnapshot };
 
-function level(utilization: number): 'ok' | 'warn' | 'danger' {
-  if (utilization >= 90) return 'danger';
-  if (utilization >= 75) return 'warn';
-  return 'ok';
+/*
+ * Two tiers, not three. The brand colour is orange, so an amber "warning" step
+ * between orange and red would read as the same colour twice and carry no
+ * information. The meter is brand-coloured until it matters, then red.
+ *
+ * 80 matches the default alert threshold, so the bar turns red exactly when a
+ * Pro user would be notified.
+ */
+function level(utilization: number): 'ok' | 'danger' {
+  return utilization >= 80 ? 'danger' : 'ok';
 }
 
 function Meter({ label, utilization }: { label: string; utilization: number }) {

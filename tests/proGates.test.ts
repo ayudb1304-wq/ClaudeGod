@@ -138,13 +138,30 @@ describe('design system integrity', () => {
    * because nine ad-hoc greys had accumulated across five surfaces built at
    * different times; without a guard the same drift restarts immediately.
    */
-  const UI_DIRS = ['src/content/ui/', 'src/popup/', 'src/options/'];
+  // src/shared is in the list because UpgradeLink hid a raw hex there for two
+  // commits: it renders UI but does not live in a UI folder.
+  const UI_DIRS = ['src/content/ui/', 'src/popup/', 'src/options/', 'src/shared/'];
+  const THEME_FILE = 'src/shared/theme.ts';
   const RAW_COLOUR = /#[0-9a-fA-F]{3,8}\b|rgba?\(\s*\d/;
 
   it('defines every colour in theme.ts and nowhere else', () => {
     const offenders = readSourceFiles()
+      .filter((file) => file.path !== THEME_FILE)
       .filter((file) => UI_DIRS.some((dir) => file.path.startsWith(dir)))
       .filter((file) => RAW_COLOUR.test(stripComments(file.text)))
+      .map((file) => file.path);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('never uses the fill accent as text, which fails contrast', () => {
+    // #FF7820 on white is 2.64:1. Links and badges must take --cg-accent-text
+    // (5.5:1) instead. This is the whole reason the two tokens are separate.
+    const offenders = readSourceFiles()
+      .filter((file) => file.path !== THEME_FILE)
+      // Lookbehind excludes `accent-color:` and `border-color:`, which are
+      // legitimate fill uses on form controls and focus rings.
+      .filter((file) => /(?<![-a-z])color:\s*var\(--cg-accent\)/.test(stripComments(file.text)))
       .map((file) => file.path);
 
     expect(offenders).toEqual([]);

@@ -58,7 +58,7 @@ body {
   padding: 4px 7px;
   border-radius: var(--cg-r-pill);
   background: var(--cg-accent-soft);
-  color: var(--cg-accent);
+  color: var(--cg-accent-text);
 }
 
 .cg-body { padding: var(--cg-s5); display: flex; flex-direction: column; gap: var(--cg-s6); }
@@ -116,7 +116,6 @@ body {
   background: var(--cg-accent);
   transition: width var(--cg-motion);
 }
-.cg-meter-fill[data-level="warn"] { background: var(--cg-warn); }
 .cg-meter-fill[data-level="danger"] { background: var(--cg-danger); }
 
 /* ---------- lists ---------- */
@@ -146,9 +145,9 @@ body {
   white-space: nowrap;
   display: block;
 }
-.cg-link:hover { color: var(--cg-accent); }
+.cg-link:hover { color: var(--cg-accent-text); }
 
-.cg-accent-link { color: var(--cg-accent); text-decoration: none; font-weight: 500; }
+.cg-accent-link { color: var(--cg-accent-text); text-decoration: none; font-weight: 500; }
 .cg-accent-link:hover { text-decoration: underline; }
 
 /* ---------- notices ---------- */

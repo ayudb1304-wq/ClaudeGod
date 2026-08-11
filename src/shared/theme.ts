@@ -14,10 +14,28 @@
  *    violet rather than anything resembling their clay.
  */
 
-/** Violet, chosen to read as a developer tool and not as Anthropic's brand. */
-export const ACCENT_LIGHT = '#6E56CF';
-/** Lifted for dark surfaces: the light-mode violet goes muddy on near-black. */
-export const ACCENT_DARK = '#8B72E8';
+/**
+ * The brand orange, sampled from the shipped logo so the UI and the icon are
+ * one identity.
+ *
+ * PRD §11 risk 5 note: this sits nearer Anthropic's clay than the violet it
+ * replaced. That is a deliberate founder decision, taken with the trademark
+ * trade-off understood; the mitigations in §9 (no Anthropic marks, prominent
+ * "Unofficial" disclaimer, fallback name ready) carry more weight because of it.
+ */
+export const ACCENT_LIGHT = '#FF7820';
+/** Lifted for dark surfaces, where the light-mode value goes muddy. */
+export const ACCENT_DARK = '#FF8A3D';
+
+/**
+ * Accent for TEXT, which cannot be the fill colour.
+ *
+ * #FF7820 on white is 2.64:1, far below the 4.5:1 needed for body text, so
+ * links and badges take a darkened version at 5.5:1. On dark the lifted orange
+ * already clears 7:1, so it doubles as both.
+ */
+export const ACCENT_TEXT_LIGHT = '#B4460A';
+export const ACCENT_TEXT_DARK = '#FF9A5C';
 
 /**
  * `scope` is `:host` inside a shadow root and `:root` on the popup and options
@@ -39,13 +57,20 @@ ${scope} {
   --cg-text-faint: rgba(27, 25, 23, .44);
 
   --cg-accent: ${ACCENT_LIGHT};
-  --cg-accent-hover: #5c46b3;
-  --cg-accent-soft: rgba(110, 86, 207, .11);
-  --cg-accent-mark: rgba(110, 86, 207, .22);
-  --cg-on-accent: #ffffff;
+  --cg-accent-text: ${ACCENT_TEXT_LIGHT};
+  --cg-accent-hover: #e0651a;
+  --cg-accent-soft: rgba(255, 120, 32, .12);
+  --cg-accent-mark: rgba(255, 120, 32, .26);
+  /* White on this orange is 2.64:1. Near-black is 6.7:1. */
+  --cg-on-accent: #2a1205;
 
   --cg-ok: #2f7d55;
-  --cg-warn: #b4621f;
+  /*
+   * Amber-gold, deliberately pulled away from the accent's hue. With an orange
+   * brand colour a warning in orange says nothing, so this is yellower and
+   * darker than the accent rather than a shade of it.
+   */
+  --cg-warn: #8a6d1f;
   --cg-danger: #b03a2e;
 
   /* One elevation, not three. Depth comes from the scrim, not stacked shadows. */
@@ -90,14 +115,15 @@ ${scope} {
     --cg-text-faint: rgba(236, 235, 233, .42);
 
     --cg-accent: ${ACCENT_DARK};
-    --cg-accent-hover: #9d88ee;
-    --cg-accent-soft: rgba(139, 114, 232, .18);
-    --cg-accent-mark: rgba(139, 114, 232, .30);
-    --cg-on-accent: #16121f;
+    --cg-accent-text: ${ACCENT_TEXT_DARK};
+    --cg-accent-hover: #ff9d55;
+    --cg-accent-soft: rgba(255, 138, 61, .18);
+    --cg-accent-mark: rgba(255, 138, 61, .30);
+    --cg-on-accent: #2a1205;
 
     --cg-ok: #5cbb85;
-    --cg-warn: #d59247;
-    --cg-danger: #e07a6b;
+    --cg-warn: #d9bc63;
+    --cg-danger: #e8776b;
 
     --cg-shadow: 0 20px 56px rgba(0, 0, 0, .50), 0 2px 8px rgba(0, 0, 0, .32);
     --cg-shadow-sm: 0 4px 16px rgba(0, 0, 0, .38);

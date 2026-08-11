@@ -161,6 +161,6 @@ ${shadowTheme()}
 .cg-hints { display: flex; align-items: center; gap: var(--cg-s3); flex: none }
 .cg-hint { display: inline-flex; align-items: center; gap: 4px }
 
-.cg-footer a { color: var(--cg-accent); text-decoration: none; font-weight: 500 }
+.cg-footer a { color: var(--cg-accent-text); text-decoration: none; font-weight: 500 }
 .cg-footer a:hover { text-decoration: underline }
 `;
