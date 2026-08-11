@@ -6,6 +6,7 @@ import { unzipSync } from 'fflate';
 import { createPrompt } from '@/core/prompts';
 import { loadFolders } from '@/core/folders';
 import { getEntitlements, setPro } from '@/core/entitlements';
+import { deriveStatus, readLicenseRecord, revalidateLicense } from '@/core/licenseState';
 import {
   createDexieExportSource,
   exportConversation,
@@ -30,7 +31,8 @@ import { updateSettings } from '@/shared/settings';
  *   window.addEventListener('message', e =>
  *     e.data?.type === 'CLAUDEGOD_DEV_RESULT' && console.log(e.data))
  *
- * Commands: dump, dbStats, runSync, setThreshold, setUsageCache,
+ * Commands: dump, dbStats, runSync, setThreshold, setUsageCache, licenseState,
+ * ageLicense, revalidateLicense,
  * clearAlertMarker, seedPrompt, folders, exportChat, setPro, exportZip.
  */
 
@@ -115,6 +117,34 @@ async function handle(cmd: string, arg: unknown): Promise<unknown> {
       // dialog automation cannot dismiss.
       const file = await exportConversation(typeof arg === 'string' ? arg : '');
       return file ? { filename: file.filename, length: String(file.data).length } : null;
+    }
+    case 'licenseState': {
+      // Reports the stored record without revealing the key itself.
+      const record = await readLicenseRecord();
+      return {
+        hasRecord: record !== null,
+        instanceId: record?.instanceId ?? null,
+        lastValidatedAt: record?.lastValidatedAt ?? null,
+        status: deriveStatus(record, new Date()),
+        isPro: getEntitlements().isPro,
+      };
+    }
+    case 'ageLicense': {
+      // Rewinds lastValidatedAt so revalidation comes due without waiting a
+      // week. `arg` is days; 8 lands past the 7-day check, 20 past the grace.
+      const record = await readLicenseRecord();
+      if (!record) return { error: 'no license record' };
+      const days = typeof arg === 'number' ? arg : 8;
+      const aged = new Date(Date.now() - days * 86400000).toISOString();
+      await setLocal('licenseCache', { ...record, lastValidatedAt: aged });
+      return { lastValidatedAt: aged, dueForRevalidation: true };
+    }
+    case 'revalidateLicense': {
+      // Drives the real revalidation path: hits Dodo's validate endpoint and
+      // applies the result. This is how the refund/revoke branch gets tested
+      // without waiting for the weekly alarm.
+      const state = await revalidateLicense();
+      return { status: state.status, isPro: getEntitlements().isPro };
     }
     case 'setPro': {
       // Flips this tab's entitlements so Pro-gated paths (bulk export, prompt
