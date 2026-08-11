@@ -65,7 +65,7 @@ Scope cut per the M0 spike (api-notes §5): the authoritative `/usage` endpoint 
 
 ## M6 — Polish & ship (Week 7)
 - [ ] Light/dark auto-theming; keyboard nav + focus states across overlay/panel/popup; calm error copy pass.
-- [ ] Full manual smoke checklist (RELEASE.md) on a fresh Chrome profile with a real 100+ chat account.
+- [ ] Full manual smoke checklist on a fresh Chrome profile with a real 100+ chat account. **Run `docs/verification-run.md`** — one ordered pass covering every unverified item across M3/M4/M5 plus the privacy claim, ~60-75 min. Do this BEFORE the theming work below: several surfaces have never rendered in a browser, and restyling unverified behaviour means touching it twice.
 - [ ] Bundle audit vs. budgets; strip dev logging.
 - [ ] Store assets: 5 screenshots (usage meter first, search second), 30s screencap GIF/video, listing copy (from RELEASE.md draft), privacy policy page live on landing domain. *(128px icon done — real logo landed 2026-08-10; consider a transparent-background variant so the toolbar icon isn't a white tile on dark themes.)*
 - [ ] Submit to Chrome Web Store. While in review: landing page live with waitlist→launch email, 2 SEO posts published ("search your Claude history", "Claude limits explained").
