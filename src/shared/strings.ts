@@ -121,6 +121,25 @@ export const strings = {
     proOnly: 'Bulk export is a Pro feature.',
   },
 
+  license: {
+    title: 'Pro licence',
+    active: 'Pro is active on this device.',
+    // Honest about the state without alarming: nothing is broken for them yet.
+    activeGrace: 'Pro is active. We could not reach the licence server recently.',
+    expired: 'We could not confirm your licence for two weeks, so Pro is paused.',
+    freeExplainer: 'You are on the free plan. Paste a licence key to unlock Pro.',
+    placeholder: 'Licence key',
+    activate: 'Activate',
+    activating: 'Activating…',
+    remove: 'Remove licence from this device',
+    buyLink: 'Get a licence key',
+    errorNotFound: 'That key was not recognised. Check for typos and try again.',
+    errorCannotActivate: 'That licence cannot be activated. It may have been refunded.',
+    errorLimitReached: 'This key is already used on the maximum number of devices.',
+    errorNetwork: 'Could not reach the licence server. Check your connection.',
+    errorServer: 'The licence server had a problem. Try again in a moment.',
+  },
+
   indexing: {
     title: 'Local index',
     checking: 'Checking…',

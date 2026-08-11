@@ -11,10 +11,15 @@ import { readSourceFiles, stripComments } from './helpers/source';
  */
 const ALLOWED_HOSTS = new Set([
   'claude.ai',
-  // Payment provider (license validation only, key + instanceId). PRD §6.
-  // Both listed while Dodo vs Lemon Squeezy is still open (PRD §12).
-  'api.dodopayments.com',
-  'api.lemonsqueezy.com',
+  // Dodo Payments license API (PRD §6). Sends a license key and an instance id,
+  // never anything derived from a conversation. Both environments are listed
+  // because the build picks one; only one is ever reachable at runtime.
+  // These are the real hosts: there is no api.dodopayments.com.
+  'test.dodopayments.com',
+  'live.dodopayments.com',
+  // Hosted checkout. Opened in a tab, never fetched, so no data leaves here.
+  'checkout.dodopayments.com',
+  'test.checkout.dodopayments.com',
 ]);
 
 /** Hosts that are documentation-only and must never be fetched. */

@@ -13,6 +13,8 @@ import { readSourceFiles, stripComments, SRC_ROOT } from './helpers/source';
  */
 
 const ADAPTER_PATH = 'src/api/claudeAdapter.ts';
+/** The one module allowed to reach the payment provider (CLAUDE.md rule 3). */
+const LICENSE_PATH = 'src/core/license.ts';
 const MUTATING_VERBS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
 /**
@@ -60,12 +62,35 @@ describe('read-only guard', () => {
     expect(violations).toEqual([]);
   });
 
-  it('no module outside the adapter calls fetch at all', () => {
+  /**
+   * Exactly two modules may reach the network, each pinned to one host:
+   * the adapter (claude.ai, read-only) and the licence client (Dodo, the sole
+   * external host hard rule 3 permits). Listing them here means a third one
+   * cannot appear without this test failing and someone justifying it.
+   */
+  it('only the adapter and the licence client call fetch', () => {
+    const FETCHERS = [ADAPTER_PATH, LICENSE_PATH];
+
     const violations = readSourceFiles()
-      .filter((file) => file.path !== ADAPTER_PATH)
+      .filter((file) => !FETCHERS.includes(file.path))
       .filter((file) => /\bfetch\s*\(/.test(stripComments(file.text)))
       .map((file) => file.path);
 
     expect(violations).toEqual([]);
+  });
+
+  it('the licence client never touches claude.ai', () => {
+    const license = readSourceFiles().find((file) => file.path === LICENSE_PATH);
+    expect(license).toBeDefined();
+
+    // Its request bodies carry a licence key and an instance id, and must never
+    // gain anything derived from a conversation or the user's Claude account.
+    const code = stripComments(license?.text ?? '');
+    expect(code).not.toMatch(/claude\.ai/i);
+    expect(code).not.toMatch(/conversation|chat_messages|artifact/i);
+  });
+
+  it('the adapter never touches the payment provider', () => {
+    expect(adapterCode).not.toMatch(/dodopayments/i);
   });
 });

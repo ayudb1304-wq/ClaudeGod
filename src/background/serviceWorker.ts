@@ -8,6 +8,16 @@ import {
 import { readSettings } from '@/shared/settings';
 import { getLocal, setLocal } from '@/shared/storage';
 import { strings } from '@/shared/strings';
+import { UNINSTALL_FEEDBACK_URL } from '@/shared/config';
+import {
+  applyStoredLicense,
+  needsRevalidation,
+  readLicenseRecord,
+  revalidateLicense,
+} from '@/core/licenseState';
+
+/** Hourly tick; the 7-day due-date check lives in licenseState. */
+export const LICENSE_ALARM_NAME = 'claudegod-license-revalidate';
 
 /**
  * MV3 service worker.
@@ -21,14 +31,45 @@ import { strings } from '@/shared/strings';
 
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
-    // Onboarding (FEATURES 7.2) opens here in M5. Sync is opt-in on that screen,
-    // so nothing may start indexing before the user consents.
+    // Opens the settings page so the first-run explainer and the "Start
+    // indexing" consent are the first thing a user sees. Nothing has been read
+    // from their account at this point (FEATURES 7.2).
+    void chrome.runtime.openOptionsPage();
   }
 });
+
+// One question, no identifiers (FEATURES 7.2). Guarded because an invalid or
+// unset URL throws, and a failure here must never break install.
+if (UNINSTALL_FEEDBACK_URL.length > 0) {
+  try {
+    void chrome.runtime.setUninstallURL(UNINSTALL_FEEDBACK_URL);
+  } catch {
+    /* non-fatal */
+  }
+}
 
 // Top-level (not just onInstalled): re-creating an existing alarm is a cheap
 // no-op, and this survives the worker being killed and revived.
 void chrome.alarms.create(USAGE_ALARM_NAME, { periodInMinutes: 1 });
+// Checked hourly, but revalidateLicense only calls out when the record is older
+// than 7 days. The frequent tick exists so a worker that was asleep on the due
+// date catches up promptly instead of waiting another week.
+void chrome.alarms.create(LICENSE_ALARM_NAME, { periodInMinutes: 60 });
+
+/**
+ * ARCHITECTURE §6 step 5. Deliberately quiet: a licence that revalidates fine
+ * produces no user-visible event, and a network failure produces none either
+ * because the 14-day grace absorbs it.
+ */
+async function checkLicense(): Promise<void> {
+  const record = await readLicenseRecord();
+  if (!record) return;
+  if (!needsRevalidation(record, new Date())) {
+    await applyStoredLicense();
+    return;
+  }
+  await revalidateLicense();
+}
 
 interface UsageAlertMarker {
   lastAlertedResetsAt: string | null;
@@ -85,6 +126,16 @@ chrome.alarms.onAlarm.addListener((alarm) => {
       // Storage hiccups on a background tick are not user-visible events.
     });
   }
+  if (alarm.name === LICENSE_ALARM_NAME) {
+    checkLicense().catch(() => {
+      // Never downgrade because a background tick threw. The grace window is
+      // the only thing allowed to expire a licence without a server refusal.
+    });
+  }
 });
+
+// The worker is revived for every alarm and message, so entitlements must be
+// rehydrated from storage each time rather than assumed to survive.
+void applyStoredLicense();
 
 export {};

@@ -135,14 +135,42 @@ countdown are direct reads.
 Ignore the internal codename keys in that response (`amber_ladder`, `tangelo`,
 and similar). They are the fields most likely to churn.
 
-## 6. License flow (Dodo / Lemon Squeezy)
+## 6. License flow (Dodo Payments)
 
-1. Upgrade CTA → opens hosted checkout URL (utm-tagged) in new tab.
+Lemon Squeezy is dropped for v1 (PRD §12 resolved). The `LicenseProvider`
+interface stays, so adding a second MoR later is an implementation, not a
+rewrite, but no stub is carried in the meantime.
+
+1. Upgrade CTA → opens hosted checkout URL in a new tab.
 2. Customer receives license key by email (MoR feature).
-3. Settings → paste key → `license.ts` calls MoR "activate/validate license" endpoint with key + generated `instanceId` (random UUID stored locally).
-4. On success store `{key, instanceId, validatedAt, plan}` in `storage.local`; `entitlements.ts` derives `isPro`.
-5. Weekly revalidation alarm; failures start a 14-day grace timer before downgrade; "refunded/disabled" response downgrades immediately with a polite notice.
-6. Abstract behind `LicenseProvider` interface so Dodo↔LS is a config swap.
+3. Settings → paste key → `license.ts` POSTs `/licenses/activate` with the key
+   plus a device name; Dodo returns an activation instance id.
+4. Store `{key, instanceId, activatedAt, lastValidatedAt, productId,
+   customerEmail}` in `storage.local`; `entitlements.ts` derives `isPro`.
+5. Hourly alarm, 7-day due date, 14-day grace. Asymmetric on purpose:
+   an explicit `valid: false` revokes immediately (refund/chargeback), while an
+   unreachable server keeps Pro until grace expires.
+6. Remove licence calls `/licenses/deactivate` to free the seat, then clears
+   local state even if that call fails.
+
+**Verified 2026-08-11 against the live docs and endpoints:**
+
+- Base URLs are `https://test.dodopayments.com` and `https://live.dodopayments.com`.
+  There is no `api.dodopayments.com`; the earlier allowlist entry was wrong.
+- `activate`, `validate` and `deactivate` are **public endpoints requiring no
+  authentication**. This is what makes a client-side extension viable.
+- **No Dodo API key may ever enter this codebase.** The key is for server-side
+  admin calls we never make, and anything in a CRX is readable by anyone who
+  downloads it. `shared/config.ts` holds base URLs and a checkout link only.
+- **No new host permission is needed.** Preflighting
+  `POST /licenses/validate` from a `chrome-extension://` origin returns
+  `access-control-allow-origin` echoing that origin, with POST and
+  `Content-Type` allowed. CORS alone covers it, so §7's permission set stands.
+- `validate` returns only `{ valid: boolean }`. It does not distinguish expired
+  from revoked from never-existed, so the UI cannot either; copy is written to
+  be true regardless of which it was.
+- Unauthenticated rate limit is 20 req/s, 100/min, with `Retry-After` on 429.
+  The client backs off exponentially and honours that header.
 
 ## 7. Permissions, privacy, compliance
 

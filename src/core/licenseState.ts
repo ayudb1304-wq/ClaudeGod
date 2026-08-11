@@ -1,0 +1,196 @@
+import { getLocal, setLocal } from '@/shared/storage';
+import { setPro } from './entitlements';
+import { LicenseError, dodoProvider, newInstanceId, type LicenseProvider } from './license';
+
+/**
+ * License lifecycle: activation record, weekly revalidation, 14-day offline
+ * grace, and downgrade (ARCHITECTURE §6 steps 3-5).
+ *
+ * The decision logic here is pure and unit-tested. Only `applyStoredLicense`
+ * and the activate/remove helpers touch storage or the network, because the
+ * interesting failure modes are all in the date arithmetic.
+ */
+
+export const REVALIDATE_AFTER_DAYS = 7;
+export const GRACE_PERIOD_DAYS = 14;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export interface LicenseRecord {
+  key: string;
+  instanceId: string;
+  activatedAt: string;
+  /** Last time the server confirmed the key. Grace counts from here. */
+  lastValidatedAt: string;
+  productId: string | null;
+  customerEmail: string | null;
+}
+
+/**
+ * `grace` still grants Pro: we could not reach Dodo, which is our problem, not
+ * the customer's. `revoked` does not: the server explicitly said no.
+ */
+export type LicenseStatus = 'none' | 'active' | 'grace' | 'expired' | 'revoked';
+
+export interface LicenseState {
+  status: LicenseStatus;
+  record: LicenseRecord | null;
+}
+
+export function isProStatus(status: LicenseStatus): boolean {
+  return status === 'active' || status === 'grace';
+}
+
+function daysBetween(from: string, now: Date): number {
+  const parsed = Date.parse(from);
+  if (!Number.isFinite(parsed)) return Number.POSITIVE_INFINITY;
+  return (now.getTime() - parsed) / DAY_MS;
+}
+
+/** Derives status from a stored record, with no network call. */
+export function deriveStatus(record: LicenseRecord | null, now: Date): LicenseStatus {
+  if (!record) return 'none';
+  const age = daysBetween(record.lastValidatedAt, now);
+  if (age <= REVALIDATE_AFTER_DAYS) return 'active';
+  if (age <= GRACE_PERIOD_DAYS) return 'grace';
+  return 'expired';
+}
+
+export function needsRevalidation(record: LicenseRecord | null, now: Date): boolean {
+  if (!record) return false;
+  return daysBetween(record.lastValidatedAt, now) > REVALIDATE_AFTER_DAYS;
+}
+
+function parseRecord(raw: unknown): LicenseRecord | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const value = raw as Record<string, unknown>;
+  const { key, instanceId, activatedAt, lastValidatedAt } = value;
+  if (
+    typeof key !== 'string' ||
+    typeof instanceId !== 'string' ||
+    typeof activatedAt !== 'string' ||
+    typeof lastValidatedAt !== 'string'
+  ) {
+    return null;
+  }
+  return {
+    key,
+    instanceId,
+    activatedAt,
+    lastValidatedAt,
+    productId: typeof value['productId'] === 'string' ? value['productId'] : null,
+    customerEmail: typeof value['customerEmail'] === 'string' ? value['customerEmail'] : null,
+  };
+}
+
+export async function readLicenseRecord(): Promise<LicenseRecord | null> {
+  return parseRecord(await getLocal<unknown>('licenseCache'));
+}
+
+async function writeLicenseRecord(record: LicenseRecord | null): Promise<void> {
+  await setLocal('licenseCache', record);
+}
+
+/** Reads storage, derives status, and pushes the result into entitlements. */
+export async function applyStoredLicense(now = new Date()): Promise<LicenseState> {
+  const record = await readLicenseRecord();
+  const status = deriveStatus(record, now);
+  setPro(isProStatus(status));
+  return { status, record };
+}
+
+export interface ActivateOutcome {
+  state: LicenseState;
+  error: LicenseError | null;
+}
+
+/**
+ * Activates a key and stores the resulting instance.
+ *
+ * The instance id is generated per install and reused, because Dodo counts
+ * activations against the key's limit; minting a new one on every attempt would
+ * exhaust a customer's seats.
+ */
+export async function activateLicense(
+  licenseKey: string,
+  instanceName: string,
+  provider: LicenseProvider = dodoProvider,
+  now = new Date(),
+): Promise<ActivateOutcome> {
+  const trimmed = licenseKey.trim();
+  if (trimmed.length === 0) {
+    return { state: { status: 'none', record: null }, error: new LicenseError('not-found') };
+  }
+
+  try {
+    const result = await provider.activate(trimmed, instanceName);
+    const record: LicenseRecord = {
+      key: trimmed,
+      instanceId: result.instanceId,
+      activatedAt: now.toISOString(),
+      lastValidatedAt: now.toISOString(),
+      productId: result.productId,
+      customerEmail: result.customerEmail,
+    };
+    await writeLicenseRecord(record);
+    setPro(true);
+    return { state: { status: 'active', record }, error: null };
+  } catch (error) {
+    const failure = error instanceof LicenseError ? error : new LicenseError('server');
+    return { state: await applyStoredLicense(now), error: failure };
+  }
+}
+
+/**
+ * Weekly revalidation.
+ *
+ * The asymmetry is the whole point: an explicit `valid: false` revokes at once
+ * (refund or chargeback), while an unreachable server leaves the record intact
+ * so the customer keeps Pro until the 14-day grace expires.
+ */
+export async function revalidateLicense(
+  provider: LicenseProvider = dodoProvider,
+  now = new Date(),
+): Promise<LicenseState> {
+  const record = await readLicenseRecord();
+  if (!record) {
+    setPro(false);
+    return { status: 'none', record: null };
+  }
+
+  let valid: boolean;
+  try {
+    valid = await provider.validate(record.key, record.instanceId);
+  } catch {
+    // Network or server trouble. Fall back to whatever the dates say.
+    return applyStoredLicense(now);
+  }
+
+  if (!valid) {
+    await writeLicenseRecord(null);
+    setPro(false);
+    return { status: 'revoked', record: null };
+  }
+
+  const refreshed: LicenseRecord = { ...record, lastValidatedAt: now.toISOString() };
+  await writeLicenseRecord(refreshed);
+  setPro(true);
+  return { status: 'active', record: refreshed };
+}
+
+/** Settings → remove licence. Frees the activation seat when possible. */
+export async function removeLicense(provider: LicenseProvider = dodoProvider): Promise<void> {
+  const record = await readLicenseRecord();
+  if (record) {
+    try {
+      await provider.deactivate(record.key, record.instanceId);
+    } catch {
+      // Best effort. A seat the server still counts is better than refusing to
+      // let the user disconnect their own machine.
+    }
+  }
+  await writeLicenseRecord(null);
+  setPro(false);
+}
+
+export { newInstanceId };
