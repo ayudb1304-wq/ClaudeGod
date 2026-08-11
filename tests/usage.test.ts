@@ -221,6 +221,10 @@ describe('evaluateAlert', () => {
     thresholdPercent: 80,
     lastAlertedResetsAt: null,
     now: NOW,
+    // These cases cover threshold, staleness and once-per-window behaviour, so
+    // they assume an entitled user. The Pro gate itself is covered in
+    // proGates.test.ts.
+    alertsEnabled: true,
   };
 
   it('fires when utilization crosses the threshold', () => {

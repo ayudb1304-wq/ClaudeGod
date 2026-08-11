@@ -2,7 +2,7 @@ import { render } from 'preact';
 import { h } from 'preact';
 import { SearchOverlay, type OverlayStatus } from './SearchOverlay';
 import { loadOrBuildIndex } from '@/core/searchStore';
-import { getEntitlements } from '@/core/entitlements';
+import { getEntitlements, subscribeEntitlements } from '@/core/entitlements';
 import { jumpToMessage } from '../jumpToMessage';
 import { writeConversationDrag } from '../dragData';
 import type { SearchIndex, SearchHit } from '@/core/searchIndex';
@@ -93,6 +93,22 @@ function onFocusIn(event: FocusEvent): void {
   input?.focus();
 }
 
+/** Builds the index if we do not hold one. Safe to call while open. */
+async function ensureIndex(): Promise<void> {
+  if (index) return;
+
+  status = 'loading';
+  if (isOpen) renderOverlay();
+  try {
+    index = await loadOrBuildIndex();
+    status = 'ready';
+  } catch {
+    // Search over a broken index is not worth faking. Say so calmly.
+    status = 'degraded';
+  }
+  if (isOpen) renderOverlay();
+}
+
 async function open(): Promise<void> {
   if (isOpen) return;
   isOpen = true;
@@ -103,18 +119,7 @@ async function open(): Promise<void> {
   document.addEventListener('focusin', onFocusIn);
   renderOverlay();
 
-  if (!index) {
-    status = 'loading';
-    renderOverlay();
-    try {
-      index = await loadOrBuildIndex();
-      status = 'ready';
-    } catch {
-      // Search over a broken index is not worth faking. Say so calmly.
-      status = 'degraded';
-    }
-    if (isOpen) renderOverlay();
-  }
+  await ensureIndex();
 }
 
 function close(): void {
@@ -162,8 +167,27 @@ function onKeyDown(event: KeyboardEvent): void {
 export function mountSearchOverlay(): () => void {
   // Capture phase so we see the key before Claude's own handlers.
   window.addEventListener('keydown', onKeyDown, true);
+
+  /*
+   * The index is cached for the page session, and it is built for one tier.
+   * Activating Pro in another tab must not leave this tab searching 100
+   * conversations until reload, so drop the cache and let the next open
+   * rebuild at the new cap.
+   */
+  let lastCap = getEntitlements().searchConversationCap;
+  const unsubscribe = subscribeEntitlements((value) => {
+    if (value.searchConversationCap === lastCap) return;
+    lastCap = value.searchConversationCap;
+    index = null;
+    status = 'loading';
+    // Rebuild eagerly only if the user is looking at it; otherwise the next
+    // open picks up the new cap.
+    if (isOpen) void ensureIndex();
+  });
+
   return () => {
     window.removeEventListener('keydown', onKeyDown, true);
+    unsubscribe();
     close();
   };
 }

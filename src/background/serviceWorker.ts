@@ -9,6 +9,7 @@ import { readSettings } from '@/shared/settings';
 import { getLocal, setLocal } from '@/shared/storage';
 import { strings } from '@/shared/strings';
 import { UNINSTALL_FEEDBACK_URL } from '@/shared/config';
+import { getEntitlements } from '@/core/entitlements';
 import {
   applyStoredLicense,
   needsRevalidation,
@@ -96,11 +97,16 @@ async function checkUsageAlert(): Promise<void> {
     readAlertMarker(),
   ]);
 
+  // Entitlements are per-context memory and this worker is killed and revived
+  // constantly, so the licence must be re-read before the gate is consulted.
+  await applyStoredLicense();
+
   const decision = evaluateAlert({
     snapshot,
     thresholdPercent: clampAlertThreshold(settings.alertThresholdPercent),
     lastAlertedResetsAt: marker.lastAlertedResetsAt,
     now: new Date(),
+    alertsEnabled: getEntitlements().usageAlerts,
   });
   if (!decision.fire || !decision.resetsAt || decision.utilization === undefined) return;
 

@@ -205,6 +205,14 @@ export interface AlertInput {
   /** resets_at of the last fired alert; the once-per-window key (ARCH §5). */
   lastAlertedResetsAt: string | null;
   now: Date;
+  /**
+   * FEATURES 3.2 makes limit alerts Pro-only. Gated here rather than at the
+   * call site so the rule sits with the rest of the tested alert logic, and so
+   * a second caller cannot forget it.
+   *
+   * The meter itself stays free (FEATURES 3.1); only the notification is paid.
+   */
+  alertsEnabled: boolean;
 }
 
 export interface AlertDecision {
@@ -221,6 +229,8 @@ export interface AlertDecision {
  */
 export function evaluateAlert(input: AlertInput): AlertDecision {
   const { snapshot, now } = input;
+  if (!input.alertsEnabled) return { fire: false };
+
   const window = snapshot?.fiveHour;
   if (!snapshot || !window?.resetsAt) return { fire: false };
 
