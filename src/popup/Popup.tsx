@@ -7,6 +7,7 @@ import { createDexieExportSource, exportConversationsZip } from '@/core/exporter
 import { conversationWebUrl } from '@/api/claudeAdapter';
 import { downloadFile } from '@/shared/download';
 import { strings } from '@/shared/strings';
+import { UpgradeLink } from '@/shared/UpgradeLink';
 import { IndexingSection } from './IndexingSection';
 
 /**
@@ -196,7 +197,9 @@ function ExportSection() {
   if (!canExport) {
     // Quiet contextual CTA, never a modal (FEATURES 7.1).
     return (
-      <p style={{ margin: '10px 0 0', fontSize: 11, color: '#888' }}>{strings.exportUi.proOnly}</p>
+      <p style={{ margin: '10px 0 0', fontSize: 11, color: '#888' }}>
+        {strings.exportUi.proOnly} <UpgradeLink source="bulk-export" />
+      </p>
     );
   }
 

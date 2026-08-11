@@ -10,6 +10,7 @@ import {
   type Prompt,
 } from '@/core/prompts';
 import { getEntitlements, subscribeEntitlements } from '@/core/entitlements';
+import { UpgradeLink } from '@/shared/UpgradeLink';
 import { StorageQuotaError } from '@/shared/storage';
 import { strings } from '@/shared/strings';
 
@@ -183,7 +184,9 @@ export function PromptLibrary() {
           </div>
         </div>
       ) : limitReached && limit !== null ? (
-        <p style={{ marginTop: 16, color: '#666' }}>{strings.prompts.limitReached(limit)}</p>
+        <p style={{ marginTop: 16, color: '#666' }}>
+          {strings.prompts.limitReached(limit)} <UpgradeLink source="prompt-limit" />
+        </p>
       ) : (
         <button
           type="button"

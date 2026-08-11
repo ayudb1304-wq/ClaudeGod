@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 import type { Folder } from '@/core/folders';
 import { looksLikeConversationDrag, readConversationUuid } from '../dragData';
 import { strings } from '@/shared/strings';
+import { UpgradeLink } from '@/shared/UpgradeLink';
 
 /**
  * Folder panel (FEATURES 4.1).
@@ -208,8 +209,11 @@ export function FolderPanel(props: FolderPanelProps) {
           {props.status && <p class="cg-note">{props.status}</p>}
           {props.error && <p class="cg-note cg-error">{props.error}</p>}
           {props.limitReached && props.maxFolders !== null ? (
-            // Quiet contextual CTA (FEATURES 7.1) — a line of text, never a modal.
-            <p class="cg-note">{strings.folders.limitReached(props.maxFolders)}</p>
+            // Quiet contextual CTA (FEATURES 7.1): a line of text, never a modal.
+            <p class="cg-note">
+              {strings.folders.limitReached(props.maxFolders)}{' '}
+              <UpgradeLink source="folder-limit" />
+            </p>
           ) : (
             <>
               <input

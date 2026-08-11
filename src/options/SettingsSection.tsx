@@ -10,6 +10,8 @@ import {
 } from '@/shared/settings';
 import { deleteAllLocalData } from '@/core/syncRunner';
 import { strings } from '@/shared/strings';
+import { UpgradeLink } from '@/shared/UpgradeLink';
+import { getEntitlements, subscribeEntitlements } from '@/core/entitlements';
 
 /**
  * Settings controls (FEATURES 8.1): shortcut, widget, alert threshold, and the
@@ -37,6 +39,11 @@ export function SettingsSection() {
   const [capturing, setCapturing] = useState(false);
   const [confirmingWipe, setConfirmingWipe] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // The threshold slider stays usable on free: the setting is remembered, it
+  // simply has no effect until Pro. Disabling it would hide what they'd get.
+  const [alertsEnabled, setAlertsEnabled] = useState(getEntitlements().usageAlerts);
+
+  useEffect(() => subscribeEntitlements((value) => setAlertsEnabled(value.usageAlerts)), []);
 
   useEffect(() => {
     readSettings()
@@ -148,10 +155,12 @@ export function SettingsSection() {
         </button>
       </Row>
 
-      <Row
-        label={strings.settingsUi.threshold(settings.alertThresholdPercent)}
-        hint={strings.settingsUi.thresholdHint}
-      >
+      <Row label={strings.settingsUi.threshold(settings.alertThresholdPercent)}>
+        {!alertsEnabled && (
+          <p style={{ margin: '0 0 4px', fontSize: 12, color: '#777' }}>
+            {strings.upgrade.alerts} <UpgradeLink source="usage-alerts" />
+          </p>
+        )}
         <input
           type="range"
           min={50}

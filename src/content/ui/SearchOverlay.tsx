@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { SearchHit } from '@/core/searchIndex';
 import { strings } from '@/shared/strings';
+import { UpgradeLink } from '@/shared/UpgradeLink';
 
 /**
  * Cmd/Ctrl+K search overlay (FEATURES 2.1).
@@ -181,7 +182,13 @@ export function SearchOverlay({
         />
         {body}
         <div class="cg-footer">
-          {cap === null ? strings.search.footerPro : strings.search.footerFree(cap)}
+          {cap === null ? (
+            strings.search.footerPro
+          ) : (
+            <>
+              {strings.search.footerFree(cap)} <UpgradeLink source="search-cap" />
+            </>
+          )}
         </div>
       </div>
     </div>

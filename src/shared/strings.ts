@@ -121,6 +121,40 @@ export const strings = {
     proOnly: 'Bulk export is a Pro feature.',
   },
 
+  onboarding: {
+    stepCounter: (step: number, total: number) => `Step ${String(step)} of ${String(total)}`,
+    step1Title: `Welcome to ${APP_NAME}`,
+    step1Body:
+      'Search every Claude conversation you have ever had, watch your usage limits, organise chats into folders, save prompts, and export anything.',
+    step2Title: 'Your chats stay on this computer',
+    step2Body: 'Before anything is read, here is exactly what happens to your data.',
+    privacyPoints: [
+      'Conversations are stored in this browser and never uploaded.',
+      'There is no server, no account, and no analytics.',
+      'Read-only: nothing in your Claude account is ever changed or sent.',
+      'You can delete everything at any time from this page.',
+    ],
+    step3Title: 'Ready when you are',
+    step3Body:
+      'Indexing reads your chat history so it becomes searchable. It runs in your open Claude tab, one request per second, and you can pause or stop it whenever you like.',
+    startIndexing: 'Start indexing',
+    starting: 'Starting…',
+    // Declining must be a real option, not a dark pattern.
+    skip: 'Not now',
+    next: 'Next',
+    back: 'Back',
+  },
+
+  upgrade: {
+    link: 'Upgrade to Pro',
+    // Kept to one short clause each. A gate that lectures is a gate people
+    // resent (FEATURES 7.1: quiet, never a nag).
+    folders: 'Pro gives you unlimited folders.',
+    prompts: 'Pro gives you an unlimited prompt library.',
+    bulkExport: 'Bulk export is a Pro feature.',
+    alerts: 'Usage alerts are a Pro feature. The meter is always free.',
+  },
+
   settingsUi: {
     title: 'Preferences',
     loading: 'Loading your settings…',
