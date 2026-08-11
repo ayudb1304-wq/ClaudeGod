@@ -11,39 +11,45 @@ import { UpgradeLink } from '@/shared/UpgradeLink';
 import { IndexingSection } from './IndexingSection';
 
 /**
- * Toolbar popup (FEATURES 3.1): displays the cached usage snapshot.
+ * Toolbar popup (FEATURES 3.1).
  *
- * Display only. The popup never fetches claude.ai — the content script owns the
- * session and keeps the cache fresh; we show what we have, honestly dated.
+ * Display only. It never fetches claude.ai: the content script owns the session
+ * and keeps the cache fresh, so we show what we have, honestly dated.
+ *
+ * Usage is the hero. The reason someone clicks this icon mid-task is to answer
+ * "how much have I got left", and that should need no reading.
  */
 
 type PopupUsageState =
-  { kind: 'loading' } | { kind: 'empty' } | { kind: 'ok'; snapshot: UsageSnapshot };
+  | { kind: 'loading' }
+  | { kind: 'empty' }
+  | { kind: 'ok'; snapshot: UsageSnapshot };
 
-function UsageRow({ label, utilization }: { label: string; utilization: number }) {
-  const color = utilization >= 90 ? '#c65f45' : utilization >= 75 ? '#b3862e' : '#4a69bd';
+function level(utilization: number): 'ok' | 'warn' | 'danger' {
+  if (utilization >= 90) return 'danger';
+  if (utilization >= 75) return 'warn';
+  return 'ok';
+}
+
+function Meter({ label, utilization }: { label: string; utilization: number }) {
   return (
-    <div style={{ margin: '8px 0 0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+    <div class="cg-meter-row">
+      <div class="cg-meter-head">
         <span>{label}</span>
-        <span>{utilization}%</span>
+        <b>{utilization}%</b>
       </div>
       <div
-        style={{
-          marginTop: 3,
-          height: 5,
-          borderRadius: 3,
-          background: '#e8e8e8',
-          overflow: 'hidden',
-        }}
+        class="cg-meter-track"
+        role="progressbar"
+        aria-label={label}
+        aria-valuenow={utilization}
+        aria-valuemin={0}
+        aria-valuemax={100}
       >
         <div
-          style={{
-            width: `${String(utilization)}%`,
-            height: '100%',
-            borderRadius: 3,
-            background: color,
-          }}
+          class="cg-meter-fill"
+          data-level={level(utilization)}
+          style={{ width: `${String(Math.min(100, Math.max(0, utilization)))}%` }}
         />
       </div>
     </div>
@@ -62,10 +68,10 @@ function UsageSection() {
   }, []);
 
   if (state.kind === 'loading') {
-    return <p style={{ margin: 0, color: '#555' }}>{strings.usage.popupLoading}</p>;
+    return <p class="cg-notice">{strings.usage.popupLoading}</p>;
   }
   if (state.kind === 'empty') {
-    return <p style={{ margin: 0, color: '#555' }}>{strings.usage.popupEmpty}</p>;
+    return <p class="cg-notice">{strings.usage.popupEmpty}</p>;
   }
 
   const { snapshot } = state;
@@ -74,22 +80,27 @@ function UsageSection() {
   const ageMs = now.getTime() - Date.parse(snapshot.fetchedAt);
 
   return (
-    <section>
+    <section class="cg-section">
+      <h2 class="cg-section-title">{strings.usage.sectionTitle}</h2>
+
       {snapshot.fiveHour && (
-        <UsageRow label={strings.usage.session} utilization={snapshot.fiveHour.utilization} />
+        <div class="cg-usage-hero">
+          <span class="cg-usage-value">{snapshot.fiveHour.utilization}%</span>
+          <span class="cg-usage-label">
+            {reset ? strings.usage.resetsIn(reset) : strings.usage.session}
+          </span>
+        </div>
+      )}
+
+      {snapshot.fiveHour && (
+        <Meter label={strings.usage.session} utilization={snapshot.fiveHour.utilization} />
       )}
       {snapshot.sevenDay && (
-        <UsageRow label={strings.usage.week} utilization={snapshot.sevenDay.utilization} />
+        <Meter label={strings.usage.week} utilization={snapshot.sevenDay.utilization} />
       )}
-      {reset && (
-        <p style={{ margin: '8px 0 0', fontSize: 11, color: '#777' }}>
-          {strings.usage.resetsIn(reset)}
-        </p>
-      )}
+
       {Number.isFinite(ageMs) && ageMs >= 0 && (
-        <p style={{ margin: '2px 0 0', fontSize: 11, color: '#999' }}>
-          {strings.usage.updatedAgo(formatDuration(ageMs))}
-        </p>
+        <p class="cg-notice">{strings.usage.updatedAgo(formatDuration(ageMs))}</p>
       )}
     </section>
   );
@@ -98,9 +109,8 @@ function UsageSection() {
 /**
  * Folder list (FEATURES 4.1).
  *
- * This is also the required fallback: if the panel cannot mount on claude.ai
- * for any reason, folders are still readable and their chats still openable
- * from here.
+ * Also the required fallback: if the panel cannot mount on claude.ai, folders
+ * stay readable and their chats openable from here.
  */
 function FoldersSection() {
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -117,47 +127,40 @@ function FoldersSection() {
     return unsubscribe;
   }, []);
 
-  if (folders.length === 0) {
-    return (
-      <p style={{ margin: '4px 0 0', color: '#666', fontSize: 12 }}>{strings.folders.empty}</p>
-    );
-  }
-
   return (
-    <ul style={{ listStyle: 'none', margin: '4px 0 0', padding: 0 }}>
-      {folders.map((folder) => (
-        <li key={folder.id} style={{ margin: '6px 0 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: folder.color }} />
-            <span style={{ flex: 1 }}>{folder.name}</span>
-            <span style={{ fontSize: 11, color: '#888' }}>
-              {strings.folders.count(folder.convIds.length)}
-            </span>
-          </div>
-          <ul style={{ listStyle: 'none', margin: 0, padding: '0 0 0 14px' }}>
-            {folder.convIds.slice(0, 5).map((convUuid) => (
-              <li key={convUuid}>
-                <a
-                  href={conversationWebUrl(convUuid)}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{
-                    fontSize: 12,
-                    color: titles.has(convUuid) ? '#444' : '#999',
-                    display: 'block',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {titles.get(convUuid) ?? strings.folders.unknownChat}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </li>
-      ))}
-    </ul>
+    <section class="cg-section">
+      <h2 class="cg-section-title">{strings.folders.title}</h2>
+
+      {folders.length === 0 ? (
+        <p class="cg-notice">{strings.folders.empty}</p>
+      ) : (
+        <ul class="cg-list">
+          {folders.map((folder) => (
+            <li key={folder.id}>
+              <div class="cg-list-row">
+                <span class="cg-dot" style={{ background: folder.color }} />
+                <span class="cg-grow">{folder.name}</span>
+                <span class="cg-faint">{strings.folders.count(folder.convIds.length)}</span>
+              </div>
+              <ul class="cg-list" style={{ paddingLeft: 16 }}>
+                {folder.convIds.slice(0, 4).map((convUuid) => (
+                  <li key={convUuid} class="cg-list-row">
+                    <a
+                      class="cg-link"
+                      href={conversationWebUrl(convUuid)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {titles.get(convUuid) ?? strings.folders.unknownChat}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -197,16 +200,17 @@ function ExportSection() {
   if (!canExport) {
     // Quiet contextual CTA, never a modal (FEATURES 7.1).
     return (
-      <p style={{ margin: '10px 0 0', fontSize: 11, color: '#888' }}>
+      <p class="cg-notice">
         {strings.exportUi.proOnly} <UpgradeLink source="bulk-export" />
       </p>
     );
   }
 
   return (
-    <div style={{ marginTop: 10 }}>
+    <div class="cg-actions">
       <button
         type="button"
+        class="cg-btn"
         disabled={busy}
         onClick={() => {
           void exportAll();
@@ -214,33 +218,43 @@ function ExportSection() {
       >
         {strings.exportUi.all}
       </button>
-      {status && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#666' }}>{status}</p>}
+      {status && <span class="cg-notice">{status}</span>}
     </div>
   );
 }
 
 export function Popup() {
+  const [isPro, setIsPro] = useState(getEntitlements().isPro);
+  useEffect(() => subscribeEntitlements((value) => setIsPro(value.isPro)), []);
+
   return (
-    <main
-      style={{ width: 280, padding: 16, font: '13px/1.5 ui-sans-serif, system-ui, sans-serif' }}
-    >
-      <h1 style={{ margin: '0 0 8px', fontSize: 15 }}>{strings.popup.title}</h1>
-      <UsageSection />
+    <main class="cg-root cg-popup">
+      <header class="cg-brand">
+        <span class="cg-mark-dot" aria-hidden="true" />
+        <span class="cg-brand-name">{strings.popup.title}</span>
+        {isPro && <span class="cg-badge">{strings.popup.proBadge}</span>}
+      </header>
 
-      <IndexingSection />
+      <div class="cg-body">
+        <UsageSection />
+        <hr class="cg-divider" />
+        <IndexingSection />
+        <hr class="cg-divider" />
+        <FoldersSection />
+        <ExportSection />
 
-      <h2 style={{ margin: '16px 0 0', fontSize: 13 }}>{strings.folders.title}</h2>
-      <FoldersSection />
-      <ExportSection />
+        <div class="cg-actions">
+          <button
+            type="button"
+            class="cg-btn"
+            onClick={() => void chrome.runtime.openOptionsPage()}
+          >
+            {strings.popup.openSettings}
+          </button>
+        </div>
+      </div>
 
-      <button
-        type="button"
-        style={{ marginTop: 12 }}
-        onClick={() => void chrome.runtime.openOptionsPage()}
-      >
-        {strings.popup.openSettings}
-      </button>
-      <p style={{ margin: '12px 0 0', fontSize: 11, color: '#888' }}>{strings.disclaimer}</p>
+      <p class="cg-footnote">{strings.disclaimer}</p>
     </main>
   );
 }

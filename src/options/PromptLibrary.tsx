@@ -19,14 +19,6 @@ import { strings } from '@/shared/strings';
  * there is room to write a prompt; the popup only lists them.
  */
 
-const field = {
-  width: '100%',
-  padding: '7px 9px',
-  border: '1px solid #ccc',
-  borderRadius: 6,
-  font: 'inherit',
-} as const;
-
 interface DraftState {
   id: string | null;
   title: string;
@@ -70,46 +62,38 @@ export function PromptLibrary() {
   }
 
   return (
-    <section style={{ marginTop: 32 }}>
-      <h2 style={{ fontSize: 16, margin: '0 0 4px' }}>{strings.prompts.title}</h2>
-      <p style={{ margin: '0 0 12px', color: '#666', fontSize: 13 }}>{strings.prompts.emptyHint}</p>
+    <section class="cg-card">
+      <h2 class="cg-card-title">{strings.prompts.title}</h2>
+      <p class="cg-card-lede">{strings.prompts.emptyHint}</p>
 
-      {prompts.length === 0 && <p style={{ color: '#666' }}>{strings.prompts.empty}</p>}
+      {prompts.length === 0 && <p class="cg-notice">{strings.prompts.empty}</p>}
 
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+      <ul class="cg-list">
         {prompts.map((prompt) => (
           <li
             key={prompt.id}
-            style={{ padding: '10px 0', borderBottom: '1px solid #eee', display: 'flex', gap: 12 }}
+            class="cg-list-row"
+            style={{ padding: '10px 0', alignItems: 'flex-start' }}
           >
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div class="cg-grow">
               <strong>{prompt.title}</strong>
               {prompt.category && (
-                <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>
+                <span class="cg-faint" style={{ marginLeft: 8 }}>
                   {prompt.category}
                 </span>
               )}
-              <div
-                style={{
-                  fontSize: 13,
-                  color: '#555',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
+              <div class="cg-muted cg-grow">
                 {prompt.body}
               </div>
               {parseVariables(prompt.body).length > 0 && (
-                <div style={{ fontSize: 12, color: '#888' }}>
+                <div class="cg-faint">
                   {parseVariables(prompt.body)
                     .map((name) => `{{${name}}}`)
                     .join(' ')}
                 </div>
               )}
             </div>
-            <button
-              type="button"
+            <button type="button" class="cg-btn"
               onClick={() => {
                 setError(null);
                 setDraft({
@@ -122,8 +106,7 @@ export function PromptLibrary() {
             >
               {strings.prompts.edit}
             </button>
-            <button
-              type="button"
+            <button type="button" class="cg-btn"
               onClick={() => {
                 void deletePrompt(prompt.id).catch(report);
               }}
@@ -134,47 +117,50 @@ export function PromptLibrary() {
         ))}
       </ul>
 
-      {error && <p style={{ color: '#b3492e' }}>{error}</p>}
+      {error && (
+        <p class="cg-notice" data-tone="danger">
+          {error}
+        </p>
+      )}
 
       {draft ? (
-        <div style={{ marginTop: 16, display: 'grid', gap: 8 }}>
-          <label>
-            {strings.prompts.fieldTitle}
+        <div class="cg-field">
+          <label class="cg-field">
+            <span class="cg-label">{strings.prompts.fieldTitle}</span>
             <input
-              style={field}
+              class="cg-text-input"
               value={draft.title}
               onInput={(event) => {
                 setDraft({ ...draft, title: (event.target as HTMLInputElement).value });
               }}
             />
           </label>
-          <label>
-            {strings.prompts.fieldBody}
+          <label class="cg-field">
+            <span class="cg-label">{strings.prompts.fieldBody}</span>
             <textarea
-              style={{ ...field, minHeight: 120, resize: 'vertical' }}
+              class="cg-text-input"
               value={draft.body}
               onInput={(event) => {
                 setDraft({ ...draft, body: (event.target as HTMLTextAreaElement).value });
               }}
             />
           </label>
-          <small style={{ color: '#777' }}>{strings.prompts.bodyHint}</small>
-          <label>
-            {strings.prompts.fieldCategory}
+          <small class="cg-hint">{strings.prompts.bodyHint}</small>
+          <label class="cg-field">
+            <span class="cg-label">{strings.prompts.fieldCategory}</span>
             <input
-              style={field}
+              class="cg-text-input"
               value={draft.category}
               onInput={(event) => {
                 setDraft({ ...draft, category: (event.target as HTMLInputElement).value });
               }}
             />
           </label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" onClick={save}>
+          <div class="cg-actions">
+            <button type="button" class="cg-btn" onClick={save}>
               {strings.prompts.save}
             </button>
-            <button
-              type="button"
+            <button type="button" class="cg-btn"
               onClick={() => {
                 setDraft(null);
               }}
@@ -184,13 +170,13 @@ export function PromptLibrary() {
           </div>
         </div>
       ) : limitReached && limit !== null ? (
-        <p style={{ marginTop: 16, color: '#666' }}>
+        <p class="cg-notice">
           {strings.prompts.limitReached(limit)} <UpgradeLink source="prompt-limit" />
         </p>
       ) : (
         <button
           type="button"
-          style={{ marginTop: 16 }}
+          class="cg-btn cg-btn-primary"
           onClick={() => {
             setError(null);
             setDraft({ ...EMPTY_DRAFT });

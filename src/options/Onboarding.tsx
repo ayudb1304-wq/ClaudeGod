@@ -75,35 +75,31 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   ][step];
 
   return (
-    <section
-      style={{
-        border: '1px solid #e2e2e2',
-        borderRadius: 10,
-        padding: '20px 22px',
-        margin: '0 0 28px',
-        background: '#fbfbfb',
-      }}
-    >
-      <p style={{ margin: 0, fontSize: 12, color: '#888' }}>
-        {strings.onboarding.stepCounter(step + 1, STEP_COUNT)}
-      </p>
-      <h2 style={{ margin: '4px 0 8px', fontSize: 17 }}>{content?.title}</h2>
-      <p style={{ margin: 0, color: '#444' }}>{content?.body}</p>
+    <section class="cg-card">
+      <div class="cg-actions">
+        <div class="cg-steps" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <span key={i} class="cg-step" data-on={String(i <= step)} />
+          ))}
+        </div>
+        <span class="cg-faint">{strings.onboarding.stepCounter(step + 1, STEP_COUNT)}</span>
+      </div>
+      <h2 class="cg-card-title">{content?.title}</h2>
+      <p class="cg-card-lede">{content?.body}</p>
 
       {step === 1 && (
-        <ul style={{ margin: '10px 0 0', paddingLeft: 18, color: '#444' }}>
+        <ul class="cg-muted" style={{ margin: 0, paddingLeft: 18 }}>
           {strings.onboarding.privacyPoints.map((point) => (
             <li key={point}>{point}</li>
           ))}
         </ul>
       )}
 
-      {problem && <p style={{ margin: '10px 0 0', fontSize: 12, color: '#a05a2c' }}>{problem}</p>}
+      {problem && <p class="cg-notice" data-tone="warn">{problem}</p>}
 
-      <div style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div class="cg-actions">
         {step > 0 && (
-          <button
-            type="button"
+          <button type="button" class="cg-btn"
             disabled={busy}
             onClick={() => {
               setStep((i) => i - 1);
@@ -114,8 +110,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
         )}
 
         {step < STEP_COUNT - 1 ? (
-          <button
-            type="button"
+          <button type="button" class="cg-btn"
             onClick={() => {
               setStep((i) => i + 1);
             }}
@@ -124,13 +119,18 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           </button>
         ) : (
           <>
-            <button type="button" disabled={busy} onClick={() => void finish(true)}>
+            <button
+              type="button"
+              class="cg-btn cg-btn-primary"
+              disabled={busy}
+              onClick={() => void finish(true)}
+            >
               {busy ? strings.onboarding.starting : strings.onboarding.startIndexing}
             </button>
             {/* Declining is a first-class outcome, not a hidden link. The
                 extension still works: folders, prompts and the usage meter
                 need no index at all. */}
-            <button type="button" disabled={busy} onClick={() => void finish(false)}>
+            <button type="button" class="cg-btn" disabled={busy} onClick={() => void finish(false)}>
               {strings.onboarding.skip}
             </button>
           </>

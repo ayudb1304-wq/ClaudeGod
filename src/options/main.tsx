@@ -1,7 +1,10 @@
 import { render } from 'preact';
 import { Options } from './Options';
 import { strings } from '@/shared/strings';
+import { mountPageStyles } from '@/shared/pageStyles';
 import { initEntitlements } from '@/core/licenseState';
+
+mountPageStyles();
 
 document.title = strings.options.title;
 

@@ -26,9 +26,9 @@ const MOD_LABEL = isMac ? '⌘' : 'Ctrl';
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: preact.ComponentChildren }) {
   return (
-    <div style={{ margin: '14px 0 0' }}>
-      <label style={{ display: 'block', fontWeight: 500 }}>{label}</label>
-      {hint && <p style={{ margin: '2px 0 4px', fontSize: 12, color: '#777' }}>{hint}</p>}
+    <div class="cg-field">
+      <span class="cg-label">{label}</span>
+      {hint && <p class="cg-hint">{hint}</p>}
       {children}
     </div>
   );
@@ -116,41 +116,40 @@ export function SettingsSection() {
   }, []);
 
   if (!settings) {
-    return <p style={{ color: '#777' }}>{strings.settingsUi.loading}</p>;
+    return <p class="cg-notice">{strings.settingsUi.loading}</p>;
   }
 
   const { searchShortcut: shortcut, usageWidget: widget } = settings;
   const combo = `${MOD_LABEL}${shortcut.requireShift ? '+Shift' : ''}+${shortcut.key.toUpperCase()}`;
 
   return (
-    <section style={{ marginTop: 28 }}>
-      <h2 style={{ fontSize: 15, margin: '0 0 6px' }}>{strings.settingsUi.title}</h2>
+    <section class="cg-card">
+      <h2 class="cg-card-title">{strings.settingsUi.title}</h2>
 
       <Row label={strings.settingsUi.shortcut} hint={strings.settingsUi.shortcutHint}>
-        <button
-          type="button"
+        <button type="button" class="cg-btn"
           onClick={() => {
             setCaptureHint(null);
             setCapturing((on) => !on);
           }}
-          style={{ minWidth: 170, fontFamily: 'ui-monospace, monospace' }}
+          style={{ minWidth: 170, fontFamily: 'var(--cg-mono)' }}
         >
           {capturing ? strings.settingsUi.shortcutCapturing : combo}
         </button>
         {capturing && (
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: captureHint ? '#a05a2c' : '#777' }}>
+          <p class="cg-notice" data-tone={captureHint ? 'warn' : undefined}>
             {captureHint ?? strings.settingsUi.shortcutEscapeHint}
           </p>
         )}
         {!shortcut.requireShift && (
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#777' }}>
+          <p class="cg-hint">
             {strings.settingsUi.shortcutComposerNote(`${MOD_LABEL}+Shift+${shortcut.key.toUpperCase()}`)}
           </p>
         )}
       </Row>
 
       <Row label={strings.settingsUi.widget}>
-        <label style={{ display: 'block', fontWeight: 400 }}>
+        <label class="cg-check">
           <input
             type="checkbox"
             checked={!widget.hidden}
@@ -175,7 +174,7 @@ export function SettingsSection() {
         </label>
         <button
           type="button"
-          style={{ marginTop: 6 }}
+          class="cg-btn"
           onClick={() => {
             void updateUsageWidgetSettings({
               right: DEFAULT_SETTINGS.usageWidget.right,
@@ -190,17 +189,18 @@ export function SettingsSection() {
 
       <Row label={strings.settingsUi.threshold(settings.alertThresholdPercent)}>
         {!alertsEnabled && (
-          <p style={{ margin: '0 0 4px', fontSize: 12, color: '#777' }}>
+          <p class="cg-hint">
             {strings.upgrade.alerts} <UpgradeLink source="usage-alerts" />
           </p>
         )}
         <input
           type="range"
+          class="cg-range"
           min={50}
           max={95}
           step={1}
           value={settings.alertThresholdPercent}
-          style={{ width: '100%' }}
+
           onInput={(event) => {
             const value = clampThreshold(Number((event.target as HTMLInputElement).value));
             void patch({ alertThresholdPercent: value });
@@ -209,7 +209,7 @@ export function SettingsSection() {
       </Row>
 
       <Row label={strings.settingsUi.data}>
-        <label style={{ display: 'block', fontWeight: 400 }}>
+        <label class="cg-check">
           <input
             type="checkbox"
             checked={settings.syncPaused}
@@ -219,7 +219,7 @@ export function SettingsSection() {
           />{' '}
           {strings.settingsUi.pauseSync}
         </label>
-        <p style={{ margin: '2px 0 0', fontSize: 12, color: '#777' }}>
+        <p class="cg-hint">
           {strings.settingsUi.pauseSyncHint}
         </p>
 
@@ -227,14 +227,13 @@ export function SettingsSection() {
           <div style={{ marginTop: 10 }}>
             {/* Destructive and irreversible, so it takes two deliberate clicks
                 and states plainly what disappears. */}
-            <p style={{ margin: '0 0 6px', fontSize: 12, color: '#a05a2c' }}>
+            <p class="cg-notice" data-tone="warn">
               {strings.settingsUi.wipeConfirm}
             </p>
-            <button type="button" onClick={() => void wipe()}>
+            <button type="button" class="cg-btn" onClick={() => void wipe()}>
               {strings.settingsUi.wipeConfirmButton}
             </button>{' '}
-            <button
-              type="button"
+            <button type="button" class="cg-btn"
               onClick={() => {
                 setConfirmingWipe(false);
               }}
@@ -243,8 +242,7 @@ export function SettingsSection() {
             </button>
           </div>
         ) : (
-          <button
-            type="button"
+          <button type="button" class="cg-btn"
             style={{ marginTop: 10 }}
             onClick={() => {
               setConfirmingWipe(true);
@@ -255,7 +253,7 @@ export function SettingsSection() {
         )}
       </Row>
 
-      {notice && <p style={{ margin: '10px 0 0', fontSize: 12, color: '#2c6e49' }}>{notice}</p>}
+      {notice && <p class="cg-notice" data-tone="ok">{notice}</p>}
     </section>
   );
 }

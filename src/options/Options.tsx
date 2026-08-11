@@ -1,14 +1,16 @@
+import { useEffect, useState } from 'preact/hooks';
 import { strings } from '@/shared/strings';
 import { PromptLibrary } from './PromptLibrary';
 import { LicenseSection } from './LicenseSection';
 import { SettingsSection } from './SettingsSection';
 import { Onboarding, isOnboardingComplete } from './Onboarding';
-import { useEffect, useState } from 'preact/hooks';
 
 /**
- * Settings page. Hosts the prompt library (M4); the remaining controls
- * (shortcuts, widget, alert threshold, pause sync, delete-all-data, license)
- * land in M5 per FEATURES 8.1.
+ * Settings page.
+ *
+ * Sections are cards on a neutral page rather than one long column, because
+ * this page now carries four unrelated jobs (onboarding, prompts, preferences,
+ * licence) and they need visible separation to stay scannable.
  */
 export function Options() {
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
@@ -22,15 +24,14 @@ export function Options() {
   }, []);
 
   return (
-    <main
-      style={{
-        maxWidth: 640,
-        margin: '40px auto',
-        padding: '0 20px',
-        font: '14px/1.6 ui-sans-serif, system-ui, sans-serif',
-      }}
-    >
-      <h1 style={{ fontSize: 20, margin: '0 0 8px' }}>{strings.options.title}</h1>
+    <main class="cg-root cg-page">
+      <header class="cg-page-head">
+        <span class="cg-mark-dot" aria-hidden="true" />
+        <div>
+          <h1 class="cg-page-title">{strings.options.title}</h1>
+          <p class="cg-hint">{strings.options.lede}</p>
+        </div>
+      </header>
 
       {showOnboarding && (
         <Onboarding
@@ -43,7 +44,8 @@ export function Options() {
       <PromptLibrary />
       <SettingsSection />
       <LicenseSection />
-      <p style={{ marginTop: 24, fontSize: 12, color: '#888' }}>{strings.disclaimer}</p>
+
+      <p class="cg-faint">{strings.disclaimer}</p>
     </main>
   );
 }

@@ -82,22 +82,20 @@ export function LicenseSection() {
   const isActive = status === 'active' || status === 'grace';
 
   return (
-    <section style={{ marginTop: 28 }}>
-      <h2 style={{ fontSize: 15, margin: '0 0 6px' }}>{strings.license.title}</h2>
+    <section class="cg-card">
+      <h2 class="cg-card-title">{strings.license.title}</h2>
 
       {isActive && state?.record ? (
         <>
-          <p style={{ margin: 0, color: '#2c6e49' }}>
+          <p class="cg-notice" data-tone="ok">
             {status === 'grace' ? strings.license.activeGrace : strings.license.active}
           </p>
           {state.record.customerEmail && (
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#777' }}>
+            <p class="cg-hint">
               {state.record.customerEmail}
             </p>
           )}
-          <button
-            type="button"
-            style={{ marginTop: 10 }}
+          <button type="button" class="cg-btn"
             disabled={busy}
             onClick={() => void remove()}
           >
@@ -106,28 +104,32 @@ export function LicenseSection() {
         </>
       ) : (
         <>
-          <p style={{ margin: '0 0 8px', color: '#555' }}>
+          <p class="cg-card-lede">
             {status === 'expired' ? strings.license.expired : strings.license.freeExplainer}
           </p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              type="text"
+          <div class="cg-actions">
+            <input type="text" class="cg-text-input"
               value={key}
               placeholder={strings.license.placeholder}
               aria-label={strings.license.placeholder}
               spellcheck={false}
-              style={{ flex: 1, padding: '6px 8px', font: 'inherit' }}
+              style={{ flex: 1 }}
               onInput={(event) => {
                 setKey((event.target as HTMLInputElement).value);
               }}
             />
-            <button type="button" disabled={busy || key.trim().length === 0} onClick={() => void activate()}>
+            <button
+              type="button"
+              class="cg-btn cg-btn-primary"
+              disabled={busy || key.trim().length === 0}
+              onClick={() => void activate()}
+            >
               {busy ? strings.license.activating : strings.license.activate}
             </button>
           </div>
           {hasCheckoutUrl() && (
             // Quiet contextual CTA, never a modal (FEATURES 7.1).
-            <p style={{ margin: '10px 0 0', fontSize: 12 }}>
+            <p class="cg-hint">
               <a href={DODO_CHECKOUT_URL} target="_blank" rel="noreferrer">
                 {strings.license.buyLink}
               </a>
@@ -136,7 +138,7 @@ export function LicenseSection() {
         </>
       )}
 
-      {problem && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#a05a2c' }}>{problem}</p>}
+      {problem && <p class="cg-notice" data-tone="warn">{problem}</p>}
     </section>
   );
 }

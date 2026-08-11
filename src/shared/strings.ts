@@ -19,12 +19,13 @@ export const strings = {
 
   popup: {
     title: APP_NAME,
+    proBadge: 'Pro',
     openSettings: 'Settings',
   },
 
   options: {
     title: `${APP_NAME} settings`,
-    scaffoldNotice: 'Shortcuts, sync controls, and licensing arrive in the next release.',
+    lede: 'Everything stays in this browser.',
   },
 
   search: {
@@ -46,6 +47,7 @@ export const strings = {
 
   usage: {
     widgetTitle: 'Usage',
+    sectionTitle: 'Usage',
     session: '5-hour session',
     week: 'Weekly',
     resetsIn: (duration: string) => `Resets in ${duration}`,

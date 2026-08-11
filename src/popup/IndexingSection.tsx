@@ -108,12 +108,12 @@ export function IndexingSection() {
   // startSync rejects on a paused setting inside the content script.
   if (paused) {
     return (
-      <section style={{ marginTop: 16 }}>
-        <h2 style={{ margin: 0, fontSize: 13 }}>{strings.indexing.title}</h2>
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#555' }}>
+      <section class="cg-section">
+        <h2 class="cg-section-title">{strings.indexing.title}</h2>
+        <p class="cg-notice">
           {indexed > 0 ? strings.indexing.indexed(indexed) : strings.indexing.nothingYet}
         </p>
-        <p style={{ margin: '4px 0 0', fontSize: 11, color: '#a05a2c' }}>
+        <p class="cg-notice" data-tone="warn">
           {strings.indexing.pausedNote}
         </p>
       </section>
@@ -121,21 +121,21 @@ export function IndexingSection() {
   }
 
   return (
-    <section style={{ marginTop: 16 }}>
-      <h2 style={{ margin: 0, fontSize: 13 }}>{strings.indexing.title}</h2>
+    <section class="cg-section">
+      <h2 class="cg-section-title">{strings.indexing.title}</h2>
 
       {phase === 'checking' && (
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#666' }}>
+        <p class="cg-notice">
           {strings.indexing.checking}
         </p>
       )}
 
       {phase === 'needs-consent' && (
         <>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#555' }}>
+          <p class="cg-notice">
             {strings.indexing.consentExplainer}
           </p>
-          <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: '#555' }}>
+          <ul class="cg-muted" style={{ margin: 0, paddingLeft: 18 }}>
             {strings.indexing.consentPoints.map((point) => (
               <li key={point}>{point}</li>
             ))}
@@ -144,29 +144,33 @@ export function IndexingSection() {
       )}
 
       {phase === 'running' && (
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#555' }}>
+        <p class="cg-notice">
           {strings.indexing.running(state?.status.progress?.indexed ?? indexed)}
         </p>
       )}
 
       {phase === 'idle' && (
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#555' }}>
+        <p class="cg-notice">
           {indexed > 0 ? strings.indexing.indexed(indexed) : strings.indexing.nothingYet}
         </p>
       )}
 
       {degraded && (
-        <p style={{ margin: '4px 0 0', fontSize: 11, color: '#a05a2c' }}>
+        <p class="cg-notice" data-tone="warn">
           {strings.sync.degraded}
         </p>
       )}
 
-      {problem && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#a05a2c' }}>{problem}</p>}
+      {problem && (
+        <p class="cg-notice" data-tone="warn">
+          {problem}
+        </p>
+      )}
 
       {phase !== 'checking' && (
         <button
           type="button"
-          style={{ marginTop: 8 }}
+          class={phase === 'needs-consent' ? 'cg-btn cg-btn-primary' : 'cg-btn'}
           disabled={phase === 'running'}
           onClick={() => void start()}
         >
@@ -179,7 +183,7 @@ export function IndexingSection() {
       )}
 
       {phase === 'running' && (
-        <p style={{ margin: '6px 0 0', fontSize: 11, color: '#888' }}>
+        <p class="cg-faint">
           {strings.indexing.keepTabOpen}
         </p>
       )}
