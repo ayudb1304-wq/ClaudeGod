@@ -55,6 +55,11 @@ export const strings = {
     // Degraded path (ARCHITECTURE §5): calm, and never a guessed number.
     unavailable: 'Usage info is taking a break. It will be back when Claude responds again.',
     popupEmpty: 'Open claude.ai to load your usage.',
+    // Usage only refreshes while a claude.ai tab is open, so the popup can be
+    // looking at an old figure. Say so plainly rather than implying it is live.
+    stale: (age: string) => `Measured ${age} ago. Open claude.ai to refresh.`,
+    windowReset: 'Your 5-hour window has reset since this was measured.',
+    openClaudeToRefresh: 'Open claude.ai to see current usage.',
     popupLoading: 'Loading usage…',
     collapse: 'Collapse usage widget',
     expand: 'Expand usage widget',
@@ -80,7 +85,9 @@ export const strings = {
     removeChat: 'Remove from folder',
     confirmDelete: (name: string) => `Delete "${name}"? Your chats stay where they are.`,
     dropHint: 'Drop to add',
-    unknownChat: 'Not in your local copy yet',
+    // Was "Not in your local copy yet", which described our storage rather
+    // than telling the user what to do about it.
+    unknownChat: 'Index your chats to see the title',
     count: (n: number) => (n === 1 ? '1 chat' : `${String(n)} chats`),
     limitReached: (limit: number) =>
       `Free plan includes ${String(limit)} folders. Upgrade for unlimited.`,

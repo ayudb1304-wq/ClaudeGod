@@ -101,6 +101,10 @@ body {
 
 .cg-usage-label { font-size: var(--cg-fs-meta); color: var(--cg-text-muted); }
 
+/* A figure old enough to mislead is dimmed, so it reads as a record rather
+   than as the current state. */
+.cg-usage-hero[data-stale="true"] { opacity: .55; }
+
 .cg-meter-row { display: flex; flex-direction: column; gap: var(--cg-s1); }
 
 .cg-meter-head {

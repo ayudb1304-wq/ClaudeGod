@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'preact/hooks';
-import { formatDuration, formatTimeUntil, readCachedUsage, type UsageSnapshot } from '@/core/usage';
+import {
+  classifyUsageFreshness,
+  formatDuration,
+  formatTimeUntil,
+  readCachedUsage,
+  type UsageSnapshot,
+} from '@/core/usage';
 import { loadFolders, subscribeFolders, type Folder } from '@/core/folders';
 import { getConversationTitles } from '@/core/db';
 import { getEntitlements, subscribeEntitlements } from '@/core/entitlements';
@@ -76,15 +82,31 @@ function UsageSection() {
 
   const { snapshot } = state;
   const now = new Date();
+  const freshness = classifyUsageFreshness(snapshot, now);
   const reset = formatTimeUntil(snapshot.fiveHour?.resetsAt ?? null, now);
   const ageMs = now.getTime() - Date.parse(snapshot.fetchedAt);
+
+  /*
+   * Expired means the 5-hour window rolled over since we last measured, so the
+   * stored percentage describes a window that no longer exists. Showing it,
+   * even dimmed, would be stating something false with a number attached.
+   */
+  if (freshness === 'expired') {
+    return (
+      <section class="cg-section">
+        <h2 class="cg-section-title">{strings.usage.sectionTitle}</h2>
+        <p class="cg-notice">{strings.usage.windowReset}</p>
+        <p class="cg-faint">{strings.usage.openClaudeToRefresh}</p>
+      </section>
+    );
+  }
 
   return (
     <section class="cg-section">
       <h2 class="cg-section-title">{strings.usage.sectionTitle}</h2>
 
       {snapshot.fiveHour && (
-        <div class="cg-usage-hero">
+        <div class="cg-usage-hero" data-stale={String(freshness === 'stale')}>
           <span class="cg-usage-value">{snapshot.fiveHour.utilization}%</span>
           <span class="cg-usage-label">
             {reset ? strings.usage.resetsIn(reset) : strings.usage.session}
@@ -99,8 +121,14 @@ function UsageSection() {
         <Meter label={strings.usage.week} utilization={snapshot.sevenDay.utilization} />
       )}
 
-      {Number.isFinite(ageMs) && ageMs >= 0 && (
-        <p class="cg-notice">{strings.usage.updatedAgo(formatDuration(ageMs))}</p>
+      {freshness === 'stale' ? (
+        // Old enough to mislead, so the caveat is louder than a timestamp.
+        <p class="cg-notice" data-tone="warn">
+          {strings.usage.stale(formatDuration(ageMs))}
+        </p>
+      ) : (
+        Number.isFinite(ageMs) &&
+        ageMs >= 0 && <p class="cg-notice">{strings.usage.updatedAgo(formatDuration(ageMs))}</p>
       )}
     </section>
   );

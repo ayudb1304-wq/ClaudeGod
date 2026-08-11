@@ -4,6 +4,7 @@ import {
   ALERT_STALE_AFTER_MS,
   clampAlertThreshold,
   evaluateAlert,
+  classifyUsageFreshness,
   formatDuration,
   formatTimeUntil,
   getUsageState,
@@ -300,5 +301,60 @@ describe('duration formatting', () => {
     expect(formatTimeUntil('not-a-date', NOW)).toBeNull();
     expect(formatTimeUntil('2026-08-10T11:00:00Z', NOW)).toBeNull();
     expect(formatTimeUntil('2026-08-10T16:50:00Z', NOW)).toBe('4h 50m');
+  });
+});
+
+describe('classifyUsageFreshness', () => {
+  const RESETS = '2026-08-11T16:00:00.000Z';
+  const at = (iso: string) => new Date(iso);
+  const snap = (fetchedAt: string, resetsAt: string | null = RESETS) => ({
+    fetchedAt,
+    fiveHour: { utilization: 82, resetsAt },
+    sevenDay: null,
+  });
+
+  it('is fresh just after a poll', () => {
+    expect(
+      classifyUsageFreshness(snap('2026-08-11T15:00:00.000Z'), at('2026-08-11T15:01:00.000Z')),
+    ).toBe('fresh');
+  });
+
+  it('ages after five minutes', () => {
+    expect(
+      classifyUsageFreshness(snap('2026-08-11T15:00:00.000Z'), at('2026-08-11T15:06:00.000Z')),
+    ).toBe('aging');
+  });
+
+  it('goes stale after thirty minutes', () => {
+    expect(
+      classifyUsageFreshness(snap('2026-08-11T15:00:00.000Z'), at('2026-08-11T15:31:00.000Z')),
+    ).toBe('stale');
+  });
+
+  it('expires once the window it measured has reset', () => {
+    // The 5-hour window rolled over, so the stored percentage describes a
+    // window that no longer exists. Age is irrelevant: this beats freshness.
+    expect(
+      classifyUsageFreshness(snap('2026-08-11T15:59:00.000Z'), at('2026-08-11T16:00:01.000Z')),
+    ).toBe('expired');
+  });
+
+  it('treats an unparseable timestamp as expired rather than current', () => {
+    expect(classifyUsageFreshness(snap('not a date', null), at('2026-08-11T15:00:00.000Z'))).toBe(
+      'expired',
+    );
+  });
+
+  it('treats a missing snapshot as expired', () => {
+    expect(classifyUsageFreshness(null, at('2026-08-11T15:00:00.000Z'))).toBe('expired');
+  });
+
+  it('still classifies by age when no reset time is known', () => {
+    expect(
+      classifyUsageFreshness(
+        snap('2026-08-11T15:00:00.000Z', null),
+        at('2026-08-11T15:02:00.000Z'),
+      ),
+    ).toBe('fresh');
   });
 });

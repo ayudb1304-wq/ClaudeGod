@@ -199,6 +199,48 @@ export function clampAlertThreshold(value: unknown): number {
  */
 export const ALERT_STALE_AFTER_MS = 10 * 60_000;
 
+/** Old enough that the figure is worth a caveat, not old enough to hide. */
+export const DISPLAY_AGING_AFTER_MS = 5 * 60_000;
+export const DISPLAY_STALE_AFTER_MS = 30 * 60_000;
+
+/**
+ * How much to trust a cached snapshot right now.
+ *
+ * Usage is only polled while a claude.ai tab is open, because the frozen
+ * permission set gives the service worker no session of its own. So the popup
+ * can be looking at a figure from hours ago, and "82%" with no caveat is a
+ * confident lie.
+ *
+ * `expired` is the important one. `resetsAt` is when the 5-hour window rolls
+ * over, so once that moment has passed the stored utilization describes a
+ * window that no longer exists: the real figure is near zero. Showing the old
+ * number then is worse than showing nothing.
+ */
+export type UsageFreshness = 'fresh' | 'aging' | 'stale' | 'expired';
+
+export function classifyUsageFreshness(
+  snapshot: UsageSnapshot | null,
+  now: Date,
+): UsageFreshness {
+  if (!snapshot) return 'expired';
+
+  const resetsAt = snapshot.fiveHour?.resetsAt;
+  if (resetsAt) {
+    const resets = Date.parse(resetsAt);
+    if (Number.isFinite(resets) && resets <= now.getTime()) return 'expired';
+  }
+
+  const fetchedAt = Date.parse(snapshot.fetchedAt);
+  // An unparseable timestamp cannot be vouched for, so treat it as the worst
+  // case rather than silently presenting it as current.
+  if (!Number.isFinite(fetchedAt)) return 'expired';
+
+  const age = now.getTime() - fetchedAt;
+  if (age >= DISPLAY_STALE_AFTER_MS) return 'stale';
+  if (age >= DISPLAY_AGING_AFTER_MS) return 'aging';
+  return 'fresh';
+}
+
 export interface AlertInput {
   snapshot: UsageSnapshot | null;
   thresholdPercent: number;
