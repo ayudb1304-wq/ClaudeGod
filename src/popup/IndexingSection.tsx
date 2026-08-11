@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { getLocal, setLocal } from '@/shared/storage';
 import { strings } from '@/shared/strings';
+import { readSettings } from '@/shared/settings';
 import type { SyncStateReply } from '@/shared/messages';
 import { SyncClientFailure, requestStartSync, requestSyncState } from './syncClient';
 
@@ -26,7 +27,16 @@ export function IndexingSection() {
   const [phase, setPhase] = useState<Phase>('checking');
   const [state, setState] = useState<SyncStateReply | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [paused, setPaused] = useState(false);
   const timer = useRef<number | null>(null);
+
+  useEffect(() => {
+    readSettings()
+      .then((settings) => {
+        setPaused(settings.syncPaused);
+      })
+      .catch(() => setPaused(false));
+  }, []);
 
   const poll = useCallback(async (): Promise<void> => {
     try {
@@ -93,6 +103,22 @@ export function IndexingSection() {
 
   const indexed = state?.indexedConversations ?? 0;
   const degraded = state?.status.kind === 'degraded';
+
+  // Without this the button would appear to work and quietly do nothing, since
+  // startSync rejects on a paused setting inside the content script.
+  if (paused) {
+    return (
+      <section style={{ marginTop: 16 }}>
+        <h2 style={{ margin: 0, fontSize: 13 }}>{strings.indexing.title}</h2>
+        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#555' }}>
+          {indexed > 0 ? strings.indexing.indexed(indexed) : strings.indexing.nothingYet}
+        </p>
+        <p style={{ margin: '4px 0 0', fontSize: 11, color: '#a05a2c' }}>
+          {strings.indexing.pausedNote}
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section style={{ marginTop: 16 }}>

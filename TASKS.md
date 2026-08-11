@@ -60,7 +60,7 @@ Scope cut per the M0 spike (api-notes §5): the authoritative `/usage` endpoint 
   - [x] `setUninstallURL` wired (guarded: an unset/invalid URL must never break install). Install now opens the settings page.
   - [ ] Still to do here: the 3-step first-run explainer as its own screen (today it is one inline block in the popup).
   - [ ] Not verified against a real account: the first backfill a user starts is also its first live test.
-- [ ] Settings page complete: shortcuts, widget, threshold, pause sync, delete-all-data, license mgmt.
+- [x] Settings page complete: shortcuts, widget, threshold, pause sync, delete-all-data, license mgmt. *(Shortcut is capture-based, Ctrl/Cmd always required; rebinding reaches an open claude.ai tab via storage.sync without reload. Threshold clamped on read as well as write. Delete-all-data drops the whole Dexie database rather than clearing tables, so the serialized search index goes too. Pause is surfaced in the popup so the button cannot appear to work and do nothing.)*
 - [ ] End-to-end test purchase in MoR test mode; document flow in RELEASE.md.
 
 ## M6 — Polish & ship (Week 7)

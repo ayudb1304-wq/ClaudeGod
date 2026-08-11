@@ -3,7 +3,8 @@ import { createDexieSyncStore, db } from './db';
 import { getChatOrganization, getConversation, listConversations } from '@/api/claudeAdapter';
 import { loadIndexableConversations, persistIndex } from './searchStore';
 import { SearchIndex } from './searchIndex';
-import { getLocal, setLocal } from '@/shared/storage';
+import { getLocal, setLocal, clearAllStorage } from '@/shared/storage';
+import { readSettings } from '@/shared/settings';
 
 /**
  * Owns "run a real sync", so the popup, onboarding and future alarms all share
@@ -39,11 +40,22 @@ export async function readSyncSummary(): Promise<SyncSummary> {
  * fight over the same checkpoint row and double the request rate against
  * claude.ai, which the throttle is specifically there to prevent.
  */
+export class SyncPausedError extends Error {
+  constructor() {
+    super('Sync is paused in settings');
+    this.name = 'SyncPausedError';
+  }
+}
+
 export function startSync(): Promise<SyncResult> {
   if (inFlight) return inFlight;
 
   inFlight = (async () => {
     try {
+      // FEATURES 8.1: pause blocks new runs but destroys nothing, so search
+      // keeps working over whatever is already indexed.
+      if ((await readSettings()).syncPaused) throw new SyncPausedError();
+
       const result = await runSync({
         adapter: { getChatOrganization, listConversations, getConversation },
         store: createDexieSyncStore(db),
@@ -72,6 +84,24 @@ export function startSync(): Promise<SyncResult> {
   })();
 
   return inFlight;
+}
+
+/**
+ * FEATURES 8.1 "Delete all local data": wipes IndexedDB and every storage area.
+ *
+ * Deliberately total. A control that promised deletion and left the search
+ * index or folder list behind would be worse than not offering it, because the
+ * user would believe their data was gone.
+ *
+ * The licence goes too. It is recoverable by re-entering the key, and leaving
+ * it behind would contradict the button's label.
+ */
+export async function deleteAllLocalData(): Promise<void> {
+  await clearAllStorage();
+  // Delete the whole database rather than clearing tables: that also drops the
+  // serialized search index and any schema left by an older version.
+  await db.delete();
+  await db.open();
 }
 
 /** Conversations whose messages are actually stored, for honest progress copy. */

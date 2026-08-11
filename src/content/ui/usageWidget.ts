@@ -235,6 +235,9 @@ export function mountUsageWidget(): void {
       // widgets fighting over position writes corrupt the stored settings.
       document.getElementById(WIDGET_ID)?.remove();
       const settings = await readSettings();
+      // FEATURES 8.1: hiding the widget removes it from the page entirely. The
+      // popup still shows usage, so hiding costs the user no information.
+      if (settings.usageWidget.hidden) return;
       const widget = new UsageWidget(settings.usageWidget);
       widget.attach();
       subscribeUsage((state) => {

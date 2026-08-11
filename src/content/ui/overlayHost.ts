@@ -7,6 +7,8 @@ import { jumpToMessage } from '../jumpToMessage';
 import { writeConversationDrag } from '../dragData';
 import type { SearchIndex, SearchHit } from '@/core/searchIndex';
 import { OVERLAY_STYLES } from './overlayStyles';
+import { DEFAULT_SETTINGS, readSettings, type ShortcutSettings } from '@/shared/settings';
+import { subscribeSyncChanges } from '@/shared/storage';
 import { shieldKeyboardEvents } from './shieldKeyboard';
 
 /**
@@ -146,13 +148,17 @@ function isEditableFocused(): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 }
 
+/** Live copy of the configured binding; refreshed when settings change. */
+let shortcut: ShortcutSettings = DEFAULT_SETTINGS.searchShortcut;
+
 function onKeyDown(event: KeyboardEvent): void {
   const modifier = event.metaKey || event.ctrlKey;
-  if (!modifier || event.key.toLowerCase() !== 'k') return;
+  if (!modifier || event.key.toLowerCase() !== shortcut.key) return;
 
-  // Shift is the always-available binding; plain Cmd+K yields to the composer.
-  const isFallbackBinding = event.shiftKey;
-  if (!isFallbackBinding && isEditableFocused()) return;
+  // Shift is the always-available binding; plain Cmd+<key> yields to the
+  // composer. When the user has asked for Shift, plain never opens us at all.
+  if (shortcut.requireShift && !event.shiftKey) return;
+  if (!event.shiftKey && isEditableFocused()) return;
 
   event.preventDefault();
   event.stopPropagation();
@@ -167,6 +173,18 @@ function onKeyDown(event: KeyboardEvent): void {
 export function mountSearchOverlay(): () => void {
   // Capture phase so we see the key before Claude's own handlers.
   window.addEventListener('keydown', onKeyDown, true);
+
+  const refreshShortcut = (): void => {
+    void readSettings().then((settings) => {
+      shortcut = settings.searchShortcut;
+    });
+  };
+  refreshShortcut();
+  // Settings live in storage.sync, so a rebind on another device or in the
+  // options tab reaches this page without a reload.
+  const unsubscribeSettings = subscribeSyncChanges((keys) => {
+    if (keys.includes('settings')) refreshShortcut();
+  });
 
   /*
    * The index is cached for the page session, and it is built for one tier.
@@ -188,6 +206,7 @@ export function mountSearchOverlay(): () => void {
   return () => {
     window.removeEventListener('keydown', onKeyDown, true);
     unsubscribe();
+    unsubscribeSettings();
     close();
   };
 }

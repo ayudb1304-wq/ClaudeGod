@@ -121,6 +121,33 @@ export const strings = {
     proOnly: 'Bulk export is a Pro feature.',
   },
 
+  settingsUi: {
+    title: 'Preferences',
+    loading: 'Loading your settings…',
+    shortcut: 'Search shortcut',
+    shortcutHint: 'Click, then press your combination. Ctrl or Cmd is always required.',
+    shortcutCapturing: 'Press keys…',
+    shortcutComposerNote: (fallback: string) =>
+      `While you are typing in Claude's message box, use ${fallback} instead.`,
+    widget: 'Usage widget',
+    widgetShow: 'Show the widget on claude.ai',
+    widgetResetButton: 'Reset widget position',
+    widgetReset: 'Widget position reset.',
+    threshold: (percent: number) => `Alert me at ${String(percent)}% of the 5-hour window`,
+    thresholdHint: 'Pro only. The meter itself is always free.',
+    data: 'Your data',
+    pauseSync: 'Pause indexing',
+    pauseSyncHint: 'Stops new indexing runs. Nothing is deleted and search keeps working.',
+    wipe: 'Delete all local data',
+    // Says exactly what goes, because the user cannot undo it.
+    wipeConfirm:
+      'This deletes every indexed chat, your search index, folders, prompts and licence from this browser. It cannot be undone.',
+    wipeConfirmButton: 'Yes, delete everything',
+    wipeDone: 'All local data deleted.',
+    wipeFailed: 'Could not delete everything. Try again in a moment.',
+    cancel: 'Cancel',
+  },
+
   license: {
     title: 'Pro licence',
     active: 'Pro is active on this device.',
@@ -162,6 +189,7 @@ export const strings = {
     needsClaudeTab: 'Open a claude.ai tab first, then try again.',
     needsReload: 'Reload your claude.ai tab, then try again.',
     failed: 'Could not start indexing. Try again in a moment.',
+    pausedNote: 'Indexing is paused in settings. Search still works over what is already indexed.',
   },
 
   sync: {
