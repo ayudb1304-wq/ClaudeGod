@@ -113,6 +113,9 @@ export function conversationWebUrl(convUuid: string): string {
 /** Match pattern for `chrome.tabs.query`. Same reasoning as above. */
 export const CLAUDE_TAB_PATTERN = `${CLAUDE_ORIGIN}/*`;
 
+/** Landing page when we need a tab to run the content script in. */
+export const CLAUDE_HOME_URL = `${CLAUDE_ORIGIN}/chats`;
+
 /** True when a tab URL belongs to Claude, so the popup can find a host tab. */
 export function isClaudeUrl(url: string | undefined): boolean {
   return typeof url === 'string' && url.startsWith(`${CLAUDE_ORIGIN}/`);

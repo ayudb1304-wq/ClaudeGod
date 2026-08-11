@@ -45,6 +45,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           // Consent is recorded by the same click that starts the work, so the
           // two can never disagree.
           await setLocal('syncConsent', true);
+          // Opens a background claude.ai tab if none is usable, so a first-run
+          // user with no Claude tab open is not sent away to fix it themselves.
           await requestStartSync();
         }
         await setLocal('onboarding', { completed: true } satisfies OnboardingRecord);

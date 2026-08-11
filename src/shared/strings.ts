@@ -220,8 +220,12 @@ export const strings = {
     buttonStart: 'Start indexing',
     buttonUpdate: 'Check for new chats',
     buttonRunning: 'Indexing…',
-    needsClaudeTab: 'Open a claude.ai tab first, then try again.',
-    needsReload: 'Reload your claude.ai tab, then try again.',
+    // Status polling only; starting now opens a tab by itself.
+    needsClaudeTab: 'Open a claude.ai tab to see indexing status.',
+    // Reached only when we opened a tab and it never came alive, which nearly
+    // always means signed out.
+    needsReload: 'Could not reach Claude. Check you are signed in at claude.ai, then try again.',
+    openedTab: 'Opened a Claude tab in the background to index in.',
     failed: 'Could not start indexing. Try again in a moment.',
     pausedNote: 'Indexing is paused in settings. Search still works over what is already indexed.',
   },
