@@ -131,3 +131,34 @@ describe('gate coverage', () => {
     expect(users.length, `${field} has no readers: the gate is not wired`).toBeGreaterThan(0);
   });
 });
+
+describe('design system integrity', () => {
+  /**
+   * theme.ts is the only place a raw colour may exist. The revamp started
+   * because nine ad-hoc greys had accumulated across five surfaces built at
+   * different times; without a guard the same drift restarts immediately.
+   */
+  const UI_DIRS = ['src/content/ui/', 'src/popup/', 'src/options/'];
+  const RAW_COLOUR = /#[0-9a-fA-F]{3,8}\b|rgba?\(\s*\d/;
+
+  it('defines every colour in theme.ts and nowhere else', () => {
+    const offenders = readSourceFiles()
+      .filter((file) => UI_DIRS.some((dir) => file.path.startsWith(dir)))
+      .filter((file) => RAW_COLOUR.test(stripComments(file.text)))
+      .map((file) => file.path);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('keeps every content-script surface inside a shadow root', () => {
+    // Claude owns the page: a surface outside a shadow root inherits their
+    // cascade and leaks ours into theirs.
+    const hosts = readSourceFiles()
+      .filter((file) => file.path.startsWith('src/content/'))
+      .filter((file) => stripComments(file.text).includes('document.body.appendChild'))
+      .filter((file) => !stripComments(file.text).includes('attachShadow'))
+      .map((file) => file.path);
+
+    expect(hosts).toEqual([]);
+  });
+});

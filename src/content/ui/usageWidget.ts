@@ -1,4 +1,5 @@
 import {
+  classifyUsageFreshness,
   formatTimeUntil,
   subscribeUsage,
   type UsageMeterState,
@@ -10,14 +11,15 @@ import {
   type UsageWidgetSettings,
 } from '@/shared/settings';
 import { strings } from '@/shared/strings';
+import { WIDGET_STYLES } from './widgetStyles';
 
 /**
  * Floating usage widget (FEATURES 3.1): 5-hour and weekly utilization plus the
  * session reset countdown. Collapsible; position dragged and persisted.
  *
- * Vanilla DOM like the sync banner: it lives in the content script's 250KB gz
- * budget and renders a handful of nodes. Passive by design — it never takes
- * focus and never intercepts typing.
+ * Vanilla DOM inside a shadow root, like the other content-script surfaces:
+ * Claude owns this page, so nothing of ours may inherit or leak styles. Passive
+ * by design, it never takes focus and never intercepts typing.
  */
 
 const WIDGET_ID = 'claudegod-usage-widget';
@@ -25,73 +27,88 @@ const EDGE_MARGIN_PX = 8;
 /** Countdown granularity. Data refresh is the poller's job, not the ticker's. */
 const TICK_MS = 30_000;
 
-interface WidgetElements {
-  container: HTMLElement;
-  header: HTMLElement;
-  toggle: HTMLButtonElement;
-  body: HTMLElement;
+function level(utilization: number): 'ok' | 'warn' | 'danger' {
+  if (utilization >= 90) return 'danger';
+  if (utilization >= 75) return 'warn';
+  return 'ok';
 }
 
-function styleBar(fill: HTMLElement, utilization: number): void {
-  fill.style.width = `${String(utilization)}%`;
-  // Neutral until it matters; no reds below the zone people actually care about.
-  fill.style.background = utilization >= 90 ? '#e07a5f' : utilization >= 75 ? '#d9a441' : '#6f8fd9';
+interface MeterRow {
+  row: HTMLElement;
+  fill: HTMLElement;
+  value: HTMLElement;
 }
 
-function buildRow(label: string): { row: HTMLElement; fill: HTMLElement; value: HTMLElement } {
+function buildRow(label: string): MeterRow {
   const row = document.createElement('div');
-  row.style.cssText = 'margin:6px 0 0';
+  row.className = 'cg-w-row';
 
   const line = document.createElement('div');
-  line.style.cssText = 'display:flex;justify-content:space-between;gap:12px';
+  line.className = 'cg-w-line';
   const name = document.createElement('span');
   name.textContent = label;
   const value = document.createElement('span');
+  value.className = 'cg-w-value';
   line.append(name, value);
 
   const track = document.createElement('div');
-  track.style.cssText = 'margin-top:3px;height:4px;border-radius:2px;background:rgba(255,255,255,.18);overflow:hidden';
+  track.className = 'cg-w-track';
+  track.setAttribute('role', 'progressbar');
+  track.setAttribute('aria-label', label);
   const fill = document.createElement('div');
-  fill.style.cssText = 'height:100%;border-radius:2px;transition:width .3s';
+  fill.className = 'cg-w-fill';
   track.appendChild(fill);
 
   row.append(line, track);
   return { row, fill, value };
 }
 
+interface WidgetElements {
+  host: HTMLElement;
+  widget: HTMLElement;
+  header: HTMLElement;
+  toggle: HTMLButtonElement;
+  body: HTMLElement;
+}
+
 function buildWidget(settings: UsageWidgetSettings): WidgetElements {
-  const container = document.createElement('div');
-  container.id = WIDGET_ID;
-  container.style.cssText = [
+  const host = document.createElement('div');
+  host.id = WIDGET_ID;
+  // Position lives on the host; everything visual lives inside the shadow root.
+  host.style.cssText = [
+    'all:initial',
     'position:fixed',
     `right:${String(settings.right)}px`,
     `bottom:${String(settings.bottom)}px`,
     'z-index:2147483646',
-    'width:200px',
-    'padding:8px 12px 10px',
-    'border-radius:10px',
-    'font:400 12px/1.45 ui-sans-serif,system-ui,sans-serif',
-    'background:rgba(20,20,20,.92)',
-    'color:#f5f5f5',
-    'box-shadow:0 2px 10px rgba(0,0,0,.22)',
-    'user-select:none',
   ].join(';');
 
+  const root = host.attachShadow({ mode: 'open' });
+  const style = document.createElement('style');
+  style.textContent = WIDGET_STYLES;
+  root.appendChild(style);
+
+  const widget = document.createElement('div');
+  widget.className = 'cg-root cg-widget';
+
   const header = document.createElement('div');
-  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;cursor:grab';
+  header.className = 'cg-w-head';
+  const dot = document.createElement('span');
+  dot.className = 'cg-w-dot';
   const title = document.createElement('span');
+  title.className = 'cg-w-title';
   title.textContent = strings.usage.widgetTitle;
-  title.style.cssText = 'font-weight:600';
   const toggle = document.createElement('button');
   toggle.type = 'button';
-  toggle.style.cssText =
-    'border:0;background:none;color:inherit;cursor:pointer;font:inherit;padding:0 2px';
-  header.append(title, toggle);
+  toggle.className = 'cg-w-toggle';
+  header.append(dot, title, toggle);
 
   const body = document.createElement('div');
+  body.className = 'cg-w-body';
 
-  container.append(header, body);
-  return { container, header, toggle, body };
+  widget.append(header, body);
+  root.appendChild(widget);
+  return { host, widget, header, toggle, body };
 }
 
 class UsageWidget {
@@ -106,8 +123,8 @@ class UsageWidget {
   constructor(settings: UsageWidgetSettings) {
     this.settings = settings;
     this.els = buildWidget(settings);
-    this.countdown.style.cssText = 'margin-top:6px;color:#bdbdbd;font-size:11px';
-    this.message.style.cssText = 'margin-top:6px;color:#bdbdbd';
+    this.countdown.className = 'cg-w-note';
+    this.message.className = 'cg-w-note';
     this.message.textContent = strings.usage.unavailable;
     this.els.body.append(this.session.row, this.week.row, this.countdown, this.message);
 
@@ -121,7 +138,7 @@ class UsageWidget {
   }
 
   attach(): void {
-    document.body.appendChild(this.els.container);
+    document.body.appendChild(this.els.host);
   }
 
   update(state: UsageMeterState): void {
@@ -135,10 +152,10 @@ class UsageWidget {
   }
 
   private render(): void {
-    const { container, toggle, body } = this.els;
+    const { host, toggle, body } = this.els;
 
     // Nothing to show yet: stay invisible rather than flashing an empty frame.
-    container.style.display = this.state.kind === 'loading' ? 'none' : '';
+    host.style.display = this.state.kind === 'loading' ? 'none' : '';
     if (this.state.kind === 'loading') return;
 
     toggle.textContent = this.settings.collapsed ? '▸' : '▾';
@@ -154,31 +171,52 @@ class UsageWidget {
       this.week.row.style.display = 'none';
       this.countdown.style.display = 'none';
       this.message.style.display = '';
+      this.message.textContent = strings.usage.unavailable;
       return;
     }
 
     const { snapshot } = this.state;
+    const now = new Date();
+    const freshness = classifyUsageFreshness(snapshot, now);
     this.message.style.display = 'none';
 
-    const rows: [ReturnType<typeof buildRow>, UsageWindowSnapshot | null][] = [
+    /*
+     * Expired means the window rolled over since we measured, so the stored
+     * percentage is about a window that no longer exists. Unlike the popup this
+     * self-heals: polling resumes as soon as the tab is visible, so we say we
+     * are updating rather than raising an alarm.
+     */
+    if (freshness === 'expired') {
+      this.session.row.style.display = 'none';
+      this.week.row.style.display = 'none';
+      this.countdown.style.display = 'none';
+      this.message.style.display = '';
+      this.message.textContent = strings.usage.widgetRefreshing;
+      return;
+    }
+
+    body.setAttribute('data-stale', String(freshness === 'stale'));
+
+    const rows: [MeterRow, UsageWindowSnapshot | null][] = [
       [this.session, snapshot.fiveHour],
       [this.week, snapshot.sevenDay],
     ];
     for (const [row, window] of rows) {
       row.row.style.display = window ? '' : 'none';
-      if (window) {
-        row.value.textContent = `${String(window.utilization)}%`;
-        styleBar(row.fill, window.utilization);
-      }
+      if (!window) continue;
+      row.value.textContent = `${String(window.utilization)}%`;
+      row.fill.style.width = `${String(window.utilization)}%`;
+      row.fill.setAttribute('data-level', level(window.utilization));
+      row.row.querySelector('.cg-w-track')?.setAttribute('aria-valuenow', String(window.utilization));
     }
 
-    const reset = formatTimeUntil(snapshot.fiveHour?.resetsAt ?? null, new Date());
+    const reset = formatTimeUntil(snapshot.fiveHour?.resetsAt ?? null, now);
     this.countdown.style.display = reset ? '' : 'none';
     if (reset) this.countdown.textContent = strings.usage.resetsIn(reset);
   }
 
   private wireDrag(): void {
-    const { container, header } = this.els;
+    const { host, header } = this.els;
     let start: { x: number; y: number; right: number; bottom: number } | null = null;
 
     header.addEventListener('pointerdown', (event) => {
@@ -190,7 +228,7 @@ class UsageWidget {
         bottom: this.settings.bottom,
       };
       header.setPointerCapture(event.pointerId);
-      header.style.cursor = 'grabbing';
+      header.setAttribute('data-dragging', 'true');
     });
 
     header.addEventListener('pointermove', (event) => {
@@ -198,15 +236,15 @@ class UsageWidget {
       const right = clampOffset(start.right - (event.clientX - start.x), window.innerWidth);
       const bottom = clampOffset(start.bottom - (event.clientY - start.y), window.innerHeight);
       this.settings = { ...this.settings, right, bottom };
-      container.style.right = `${String(right)}px`;
-      container.style.bottom = `${String(bottom)}px`;
+      host.style.right = `${String(right)}px`;
+      host.style.bottom = `${String(bottom)}px`;
     });
 
     const finish = (event: PointerEvent): void => {
       if (!start) return;
       start = null;
       header.releasePointerCapture(event.pointerId);
-      header.style.cursor = 'grab';
+      header.removeAttribute('data-dragging');
       this.persist();
     };
     header.addEventListener('pointerup', finish);

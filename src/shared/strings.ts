@@ -60,6 +60,9 @@ export const strings = {
     stale: (age: string) => `Measured ${age} ago. Open claude.ai to refresh.`,
     windowReset: 'Your 5-hour window has reset since this was measured.',
     openClaudeToRefresh: 'Open claude.ai to see current usage.',
+    // On claude.ai the poller self-heals within a minute, so the widget says
+    // it is updating rather than raising the popup's alarm.
+    widgetRefreshing: 'Updating…',
     popupLoading: 'Loading usage…',
     collapse: 'Collapse usage widget',
     expand: 'Expand usage widget',
