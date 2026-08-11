@@ -40,25 +40,13 @@ body {
   border-bottom: 1px solid var(--cg-border);
 }
 
-/* A mark rather than a logo: two overlapping violet dots, drawn in CSS so
-   there is no asset to load and it tints correctly in both themes. */
-.cg-mark-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: var(--cg-r-pill);
-  background: var(--cg-accent);
-  position: relative;
+/* The shipped icon, same file the manifest uses. Rendered at 2x its box so it
+   stays crisp on retina without a second asset. */
+.cg-brand-mark {
   flex: none;
-}
-.cg-mark-dot::after {
-  content: "";
-  position: absolute;
-  inset: 4px 4px auto auto;
-  width: 6px;
-  height: 6px;
-  border-radius: var(--cg-r-pill);
-  background: var(--cg-on-accent);
-  opacity: .9;
+  display: block;
+  border-radius: var(--cg-r-ctl);
+  object-fit: contain;
 }
 
 .cg-brand-name { font-weight: 600; letter-spacing: -.01em; flex: 1; }

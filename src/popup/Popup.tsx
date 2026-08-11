@@ -14,6 +14,7 @@ import { conversationWebUrl } from '@/api/claudeAdapter';
 import { downloadFile } from '@/shared/download';
 import { strings } from '@/shared/strings';
 import { UpgradeLink } from '@/shared/UpgradeLink';
+import { BrandMark } from '@/shared/BrandMark';
 import { IndexingSection } from './IndexingSection';
 
 /**
@@ -258,7 +259,7 @@ export function Popup() {
   return (
     <main class="cg-root cg-popup">
       <header class="cg-brand">
-        <span class="cg-mark-dot" aria-hidden="true" />
+        <BrandMark size={18} />
         <span class="cg-brand-name">{strings.popup.title}</span>
         {isPro && <span class="cg-badge">{strings.popup.proBadge}</span>}
       </header>

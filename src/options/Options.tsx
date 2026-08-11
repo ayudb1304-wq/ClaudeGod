@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { strings } from '@/shared/strings';
+import { BrandMark } from '@/shared/BrandMark';
 import { PromptLibrary } from './PromptLibrary';
 import { LicenseSection } from './LicenseSection';
 import { SettingsSection } from './SettingsSection';
@@ -26,7 +27,7 @@ export function Options() {
   return (
     <main class="cg-root cg-page">
       <header class="cg-page-head">
-        <span class="cg-mark-dot" aria-hidden="true" />
+        <BrandMark size={30} />
         <div>
           <h1 class="cg-page-title">{strings.options.title}</h1>
           <p class="cg-hint">{strings.options.lede}</p>
