@@ -171,6 +171,34 @@ rewrite, but no stub is carried in the meantime.
   be true regardless of which it was.
 - Unauthenticated rate limit is 20 req/s, 100/min, with `Retry-After` on 429.
   The client backs off exponentially and honours that header.
+- **Test and live use different CHECKOUT hosts**, which the docs show only for
+  live: `test.checkout.dodopayments.com` and `checkout.dodopayments.com`. A test
+  build linked at the live host returns `error/not-found` for a product that
+  exists. `shared/config.ts` therefore takes a bare product id and derives the
+  host from `DODO_ENVIRONMENT`, so the two cannot disagree.
+- 422 is returned both for a genuine activation-limit failure and for a
+  malformed body (`code: "INVALID_REQUEST_BODY"`). Map on the body's code first,
+  the status second, or a bad request tells a customer their key is on too many
+  devices.
+- An unknown key gives 404 on `activate` but `200 {"valid":false}` on
+  `validate`.
+
+**Verified end to end 2026-08-11** against a real test payment: purchase → key
+issued → activate (1 seat) → gates unlock without reload → remove → seat freed.
+Revoke verified by disabling the key server-side: `validate` returns false and a
+forced revalidation downgrades immediately, without granting the grace window.
+
+**Open before launch:**
+
+1. **Does a refund invalidate the key?** Untested: sandbox refunds require a
+   funded merchant wallet. Our revoke path is correct given `valid:false`, but
+   if Dodo does not produce that on refund, refunded customers keep Pro and
+   nothing signals it. Confirm with Dodo, or drive downgrade from a refund
+   webhook rather than from key status.
+2. **No post-purchase landing page.** Checkout carries no `redirect_url`, so a
+   customer pays and lands nowhere, with the key arriving only by email. Dodo
+   appends the key to `redirect_url`, so a success page can show it directly.
+   Blocked on the landing domain.
 
 ## 7. Permissions, privacy, compliance
 
