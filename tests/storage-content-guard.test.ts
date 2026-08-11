@@ -48,6 +48,9 @@ describe('storage content guard', () => {
       'folders',
       'prompts',
       'settings',
+      // Dodo activation instance id (a random UUID). Synced on purpose so a
+      // reinstall does not burn a licence seat.
+      'licenseInstance',
       'licenseCache',
       'onboarding',
       'debugLog',

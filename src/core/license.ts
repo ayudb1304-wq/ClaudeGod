@@ -59,8 +59,21 @@ const sleep = (ms: number): Promise<void> =>
     setTimeout(resolve, ms);
   });
 
-function failureFor(status: number): ActivationFailure {
-  if (status === 404) return 'not-found';
+/**
+ * Maps a failure response to a cause.
+ *
+ * Probed against the live test API 2026-08-11: an unknown key returns 404, and
+ * a malformed body returns 422 with `code: "INVALID_REQUEST_BODY"`. Since the
+ * activation-limit failure is *also* a 422, mapping the status alone would tell
+ * a user their key was on too many devices whenever we sent a bad request. The
+ * body's code disambiguates.
+ */
+function failureFor(status: number, body: unknown): ActivationFailure {
+  const code =
+    typeof body === 'object' && body !== null && 'code' in body ? String(body.code) : '';
+
+  if (code === 'INVALID_REQUEST_BODY') return 'server';
+  if (status === 404 || code === 'NOT_FOUND') return 'not-found';
   if (status === 403) return 'cannot-activate';
   if (status === 422) return 'limit-reached';
   return 'server';
@@ -106,7 +119,15 @@ async function post(path: string, body: Record<string, string>): Promise<unknown
       continue;
     }
 
-    throw new LicenseError(failureFor(response.status));
+    // Read the body before mapping: the cause often lives in `code`, not the
+    // status. A parse failure just leaves us with the status.
+    let errorBody: unknown = null;
+    try {
+      errorBody = (await response.json()) as unknown;
+    } catch {
+      /* status-only mapping */
+    }
+    throw new LicenseError(failureFor(response.status, errorBody));
   }
 
   throw new LicenseError('network');

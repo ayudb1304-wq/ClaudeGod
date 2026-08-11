@@ -12,7 +12,23 @@
  */
 
 /** Synced across devices (Pro benefit). Quotas: 8KB per item, 100KB total. */
-export const SYNC_KEYS = ['folders', 'prompts', 'settings'] as const;
+export const SYNC_KEYS = [
+  'folders',
+  'prompts',
+  'settings',
+  /*
+   * The Dodo activation instance id, deliberately synced rather than local.
+   *
+   * A seat is consumed per activation, and a local-only id is destroyed by
+   * every reinstall or new Chrome profile, so honest customers leak seats they
+   * can never reclaim. Syncing it means one person holds one activation across
+   * all their signed-in profiles, and it survives reinstalls.
+   *
+   * It is a random UUID: an identifier for a licence seat, carrying nothing
+   * about the user and nothing derived from a conversation.
+   */
+  'licenseInstance',
+] as const;
 
 /**
  * Device-local. License cache lives here, never in sync (ARCHITECTURE §4).

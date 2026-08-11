@@ -140,6 +140,77 @@ describe('activateLicense', () => {
   });
 });
 
+describe('seat reuse across profiles and reinstalls', () => {
+  it('reuses a synced instance instead of consuming a second seat', async () => {
+    // First device activates and publishes its instance id to storage.sync.
+    const activate = vi.fn(() =>
+      Promise.resolve({ instanceId: 'lki_shared', productId: null, customerEmail: null }),
+    );
+    await activateLicense('PRO-KEY', 'Laptop', provider({ activate }), NOW);
+    expect(activate).toHaveBeenCalledTimes(1);
+
+    // Second profile: same synced storage, but its own local record is gone.
+    await chrome.storage.local.remove('licenseCache');
+    resetEntitlementsForTests();
+
+    const activate2 = vi.fn();
+    const validate = vi.fn(() => Promise.resolve(true));
+    const outcome = await activateLicense(
+      'PRO-KEY',
+      'Desktop',
+      provider({ activate: activate2, validate }),
+      NOW,
+    );
+
+    expect(validate).toHaveBeenCalledWith('PRO-KEY', 'lki_shared');
+    expect(activate2).not.toHaveBeenCalled();
+    expect(outcome.state.record?.instanceId).toBe('lki_shared');
+    expect(getEntitlements().isPro).toBe(true);
+  });
+
+  it('falls back to a fresh activation when the synced seat is dead', async () => {
+    await chrome.storage.sync.set({ licenseInstance: 'lki_revoked' });
+
+    const activate = vi.fn(() =>
+      Promise.resolve({ instanceId: 'lki_fresh', productId: null, customerEmail: null }),
+    );
+    const outcome = await activateLicense(
+      'PRO-KEY',
+      'Device',
+      provider({ activate, validate: () => Promise.resolve(false) }),
+      NOW,
+    );
+
+    expect(activate).toHaveBeenCalled();
+    expect(outcome.state.record?.instanceId).toBe('lki_fresh');
+  });
+
+  it('activates normally when validate throws on the synced seat', async () => {
+    await chrome.storage.sync.set({ licenseInstance: 'lki_stale' });
+
+    const activate = vi.fn(() =>
+      Promise.resolve({ instanceId: 'lki_fresh', productId: null, customerEmail: null }),
+    );
+    await activateLicense(
+      'PRO-KEY',
+      'Device',
+      provider({ activate, validate: () => Promise.reject(new LicenseError('server')) }),
+      NOW,
+    );
+
+    // A failed reuse probe must not block activation entirely.
+    expect(activate).toHaveBeenCalled();
+  });
+
+  it('clears the shared instance on removal so the seat is not reclaimed', async () => {
+    await activateLicense('PRO-KEY', 'Device', provider(), NOW);
+    await removeLicense(provider());
+
+    const stored = await chrome.storage.sync.get('licenseInstance');
+    expect(stored['licenseInstance']).toBeFalsy();
+  });
+});
+
 describe('revalidateLicense', () => {
   it('refreshes the timestamp when the server confirms the key', async () => {
     await activateLicense('PRO-KEY', 'Device', provider(), new Date(NOW.getTime() - 8 * 86400000));

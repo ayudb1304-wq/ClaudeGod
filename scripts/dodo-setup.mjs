@@ -106,9 +106,19 @@ const PRODUCT = {
     tax_inclusive: false,
   },
   license_key_enabled: true,
-  // 3 seats: one is hostile (laptop + desktop is PRD story #3), unlimited is a
-  // piracy hole. Matches what the extension's "limit reached" copy implies.
-  license_key_activations_limit: 3,
+  /*
+   * 5 seats. A seat is consumed per Chrome profile, and the instance id lives
+   * in storage.local, so ordinary churn (reinstall, new laptop, work + personal
+   * profiles) burns seats that are never released. A tight limit therefore
+   * generates support tickets from honest customers, and at $29 lifetime one
+   * support exchange eats the margin.
+   *
+   * 5 is headroom, not generosity: once the instance id moves to storage.sync
+   * it persists across reinstalls and profiles, so one person consumes one
+   * seat however many machines they own, and this ceiling only ever binds on
+   * a key that has been shared with strangers.
+   */
+  license_key_activations_limit: 5,
   license_key_activation_message: 'Paste this key into ClaudeGod → Settings → Pro licence.',
 };
 
@@ -140,7 +150,8 @@ async function main() {
     key,
     customer_id: customerId,
     product_id: productId,
-    activations_limit: 3,
+    activations_limit: 5,
+    // Lifetime licence (PRD §6): null means the key never expires.
     expires_at: null,
   });
 

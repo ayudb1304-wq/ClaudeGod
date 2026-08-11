@@ -1,4 +1,4 @@
-import { getLocal, setLocal } from '@/shared/storage';
+import { getLocal, getSync, setLocal, setSync } from '@/shared/storage';
 import { setPro } from './entitlements';
 import { LicenseError, dodoProvider, newInstanceId, type LicenseProvider } from './license';
 
@@ -105,6 +105,31 @@ export interface ActivateOutcome {
 }
 
 /**
+ * The activation instance shared across this user's Chrome profiles.
+ *
+ * Lives in storage.sync so a reinstall or a second profile reuses the existing
+ * seat instead of consuming another one. Returns null when nothing is stored,
+ * or when the user is not signed into Chrome and sync is unavailable.
+ */
+async function readSharedInstanceId(): Promise<string | null> {
+  try {
+    const stored = await getSync<unknown>('licenseInstance');
+    return typeof stored === 'string' && stored.length > 0 ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeSharedInstanceId(instanceId: string): Promise<void> {
+  try {
+    await setSync('licenseInstance', instanceId);
+  } catch {
+    // Sync quota or a signed-out profile. The local record still works; this
+    // device just falls back to holding its own seat.
+  }
+}
+
+/**
  * Activates a key and stores the resulting instance.
  *
  * The instance id is generated per install and reused, because Dodo counts
@@ -123,6 +148,33 @@ export async function activateLicense(
   }
 
   try {
+    /*
+     * Reuse before activate. If this user already holds a seat (another Chrome
+     * profile, or this one before a reinstall), validating against it proves
+     * the licence without consuming a second activation. Only when there is no
+     * usable seat do we spend one.
+     *
+     * This is what keeps a five-seat key from being exhausted by one person's
+     * ordinary churn.
+     */
+    const sharedInstanceId = await readSharedInstanceId();
+    if (sharedInstanceId) {
+      const stillValid = await provider.validate(trimmed, sharedInstanceId).catch(() => false);
+      if (stillValid) {
+        const reused: LicenseRecord = {
+          key: trimmed,
+          instanceId: sharedInstanceId,
+          activatedAt: now.toISOString(),
+          lastValidatedAt: now.toISOString(),
+          productId: null,
+          customerEmail: null,
+        };
+        await writeLicenseRecord(reused);
+        setPro(true);
+        return { state: { status: 'active', record: reused }, error: null };
+      }
+    }
+
     const result = await provider.activate(trimmed, instanceName);
     const record: LicenseRecord = {
       key: trimmed,
@@ -133,6 +185,7 @@ export async function activateLicense(
       customerEmail: result.customerEmail,
     };
     await writeLicenseRecord(record);
+    await writeSharedInstanceId(result.instanceId);
     setPro(true);
     return { state: { status: 'active', record }, error: null };
   } catch (error) {
@@ -190,6 +243,13 @@ export async function removeLicense(provider: LicenseProvider = dodoProvider): P
     }
   }
   await writeLicenseRecord(null);
+  // Clear the shared instance too: the seat has been released, so a later
+  // activation must claim a fresh one rather than validate against a dead id.
+  try {
+    await setSync('licenseInstance', null);
+  } catch {
+    /* best effort */
+  }
   setPro(false);
 }
 
