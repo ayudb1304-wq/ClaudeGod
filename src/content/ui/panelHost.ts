@@ -24,6 +24,7 @@ import { readSettings, updateSettings } from '@/shared/settings';
 import { StorageQuotaError, subscribeSyncChanges } from '@/shared/storage';
 import { downloadFile } from '@/shared/download';
 import { strings } from '@/shared/strings';
+import { followClaudeTheme } from '../themeSync';
 
 /**
  * Mounts the folder panel into its own shadow root and wires it to the store.
@@ -62,6 +63,8 @@ function ensureHost(): HTMLDivElement {
   shieldKeyboardEvents(host);
 
   const shadow = host.attachShadow({ mode: 'open' });
+  // Match Claude's own light/dark toggle, not just the OS (FEATURES 8.3).
+  followClaudeTheme(host);
   const style = document.createElement('style');
   style.textContent = PANEL_STYLES;
   shadow.appendChild(style);

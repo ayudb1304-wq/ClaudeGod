@@ -21,6 +21,7 @@ import {
 } from '../promptInsert';
 import { subscribeSyncChanges } from '@/shared/storage';
 import { strings } from '@/shared/strings';
+import { followClaudeTheme } from '../themeSync';
 
 /**
  * Host for the `/` prompt picker (FEATURES 5.1).
@@ -54,6 +55,8 @@ function ensureHost(): HTMLDivElement {
   shieldKeyboardEvents(host);
 
   const shadow = host.attachShadow({ mode: 'open' });
+  // Match Claude's own light/dark toggle, not just the OS (FEATURES 8.3).
+  followClaudeTheme(host);
   const style = document.createElement('style');
   style.textContent = PICKER_STYLES;
   shadow.appendChild(style);

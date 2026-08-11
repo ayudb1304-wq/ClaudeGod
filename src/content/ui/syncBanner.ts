@@ -1,6 +1,7 @@
 import { subscribeSyncStatus, type SyncStatusState } from '@/shared/syncStatus';
 import { strings } from '@/shared/strings';
 import { shadowTheme } from '@/shared/theme';
+import { followClaudeTheme } from '../themeSync';
 
 /**
  * Sync progress and degraded-mode banner (FEATURES 1.1, TASKS M1).
@@ -68,6 +69,8 @@ function ensureBanner(): BannerParts {
   host.style.cssText = 'all:initial;position:fixed;bottom:16px;right:16px;z-index:2147483647';
 
   const root = host.attachShadow({ mode: 'open' });
+  // Match Claude's own light/dark toggle, not just the OS (FEATURES 8.3).
+  followClaudeTheme(host);
   const style = document.createElement('style');
   style.textContent = BANNER_STYLES;
   root.appendChild(style);

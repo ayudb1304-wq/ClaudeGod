@@ -9,9 +9,8 @@
  *
  * 1. Nothing outside this file may write a raw colour. If a component needs a
  *    shade that is not here, the token set is wrong, not the component.
- * 2. No Anthropic brand colours (PRD §9). The palette is warm-neutral so it
- *    sits comfortably beside Claude, and the accent is deliberately our own
- *    violet rather than anything resembling their clay.
+ * 2. The accent is the brand orange, sampled from the shipped logo. See the
+ *    trademark note on ACCENT_LIGHT before changing it.
  */
 
 /**
@@ -36,6 +35,35 @@ export const ACCENT_DARK = '#FF8A3D';
  */
 export const ACCENT_TEXT_LIGHT = '#B4460A';
 export const ACCENT_TEXT_DARK = '#FF9A5C';
+
+/** Dark values, emitted for both the media query and the explicit stamp. */
+const DARK_TOKENS = `
+  --cg-bg: #1a1a1c;
+  --cg-bg-subtle: #141416;
+  --cg-bg-raised: #26262a;
+  --cg-bg-scrim: rgba(0, 0, 0, .55);
+
+  --cg-border: rgba(255, 255, 255, .09);
+  --cg-border-strong: rgba(255, 255, 255, .17);
+
+  --cg-text: #ecebe9;
+  --cg-text-muted: rgba(236, 235, 233, .62);
+  --cg-text-faint: rgba(236, 235, 233, .42);
+
+  --cg-accent: ${ACCENT_DARK};
+  --cg-accent-text: ${ACCENT_TEXT_DARK};
+  --cg-accent-hover: #ff9d55;
+  --cg-accent-soft: rgba(255, 138, 61, .18);
+  --cg-accent-mark: rgba(255, 138, 61, .30);
+  --cg-on-accent: #2a1205;
+
+  --cg-ok: #5cbb85;
+  --cg-warn: #d9bc63;
+  --cg-danger: #e8776b;
+
+  --cg-shadow: 0 20px 56px rgba(0, 0, 0, .50), 0 2px 8px rgba(0, 0, 0, .32);
+  --cg-shadow-sm: 0 4px 16px rgba(0, 0, 0, .38);
+`;
 
 /**
  * `scope` is `:host` inside a shadow root and `:root` on the popup and options
@@ -100,35 +128,21 @@ ${scope} {
   --cg-focus: 0 0 0 2px var(--cg-accent-soft), 0 0 0 1px var(--cg-accent);
 }
 
+/*
+ * Three states, not two (FEATURES 8.3).
+ *
+ * The OS preference is only the fallback. On claude.ai we read Claude's own
+ * mode and stamp data-cg-mode on the host, because someone running Claude in
+ * dark on a light OS would otherwise get a white panel over their dark UI.
+ *
+ * So: bare scope is light; the media query applies dark unless light was
+ * explicitly stamped; and an explicit dark stamp wins regardless of the OS.
+ */
 @media (prefers-color-scheme: dark) {
-  ${scope} {
-    --cg-bg: #1a1a1c;
-    --cg-bg-subtle: #141416;
-    --cg-bg-raised: #26262a;
-    --cg-bg-scrim: rgba(0, 0, 0, .55);
-
-    --cg-border: rgba(255, 255, 255, .09);
-    --cg-border-strong: rgba(255, 255, 255, .17);
-
-    --cg-text: #ecebe9;
-    --cg-text-muted: rgba(236, 235, 233, .62);
-    --cg-text-faint: rgba(236, 235, 233, .42);
-
-    --cg-accent: ${ACCENT_DARK};
-    --cg-accent-text: ${ACCENT_TEXT_DARK};
-    --cg-accent-hover: #ff9d55;
-    --cg-accent-soft: rgba(255, 138, 61, .18);
-    --cg-accent-mark: rgba(255, 138, 61, .30);
-    --cg-on-accent: #2a1205;
-
-    --cg-ok: #5cbb85;
-    --cg-warn: #d9bc63;
-    --cg-danger: #e8776b;
-
-    --cg-shadow: 0 20px 56px rgba(0, 0, 0, .50), 0 2px 8px rgba(0, 0, 0, .32);
-    --cg-shadow-sm: 0 4px 16px rgba(0, 0, 0, .38);
-  }
+  ${scope}:not([data-cg-mode='light']) {${DARK_TOKENS}  }
 }
+
+${scope}[data-cg-mode='dark'] {${DARK_TOKENS}}
 
 /* Respect the OS setting. Motion is decoration here, never information. */
 @media (prefers-reduced-motion: reduce) {

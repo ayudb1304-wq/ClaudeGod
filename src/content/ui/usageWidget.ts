@@ -12,6 +12,7 @@ import {
 } from '@/shared/settings';
 import { strings } from '@/shared/strings';
 import { WIDGET_STYLES } from './widgetStyles';
+import { followClaudeTheme } from '../themeSync';
 
 /**
  * Floating usage widget (FEATURES 3.1): 5-hour and weekly utilization plus the
@@ -90,6 +91,8 @@ function buildWidget(settings: UsageWidgetSettings): WidgetElements {
   ].join(';');
 
   const root = host.attachShadow({ mode: 'open' });
+  // Match Claude's own light/dark toggle, not just the OS (FEATURES 8.3).
+  followClaudeTheme(host);
   const style = document.createElement('style');
   style.textContent = WIDGET_STYLES;
   root.appendChild(style);

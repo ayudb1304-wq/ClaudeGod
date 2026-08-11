@@ -10,6 +10,7 @@ import { OVERLAY_STYLES } from './overlayStyles';
 import { DEFAULT_SETTINGS, readSettings, type ShortcutSettings } from '@/shared/settings';
 import { subscribeSyncChanges } from '@/shared/storage';
 import { shieldKeyboardEvents } from './shieldKeyboard';
+import { followClaudeTheme } from '../themeSync';
 
 /**
  * Mounts the search overlay into a shadow root.
@@ -37,6 +38,8 @@ function ensureHost(): { shadow: ShadowRoot; mount: HTMLDivElement } {
   document.body.appendChild(host);
 
   const root = host.attachShadow({ mode: 'open' });
+  // Match Claude's own light/dark toggle, not just the OS (FEATURES 8.3).
+  followClaudeTheme(host);
 
   // Claude redirects loose keystrokes into its composer, and shadow retargeting
   // hides our focused input from their check. See shieldKeyboard.ts.
@@ -111,14 +114,61 @@ async function ensureIndex(): Promise<void> {
   if (isOpen) renderOverlay();
 }
 
+/**
+ * Where focus was before we opened, so it can go back.
+ *
+ * Without this, dismissing the overlay drops focus to the document body and a
+ * keyboard user restarts from the top of Claude's page.
+ */
+let focusBeforeOpen: HTMLElement | null = null;
+
+/** Tabbable nodes inside the panel, in document order. */
+function focusables(): HTMLElement[] {
+  if (!mountPoint) return [];
+  return [
+    ...mountPoint.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  ].filter((element) => element.offsetParent !== null || element.tagName === 'INPUT');
+}
+
+/**
+ * Keeps Tab inside the dialog (WAI-ARIA modal pattern).
+ *
+ * It is declared aria-modal, which tells a screen reader the rest of the page
+ * is inert; without a trap, sighted keyboard users would tab out into content
+ * their assistive tech has been told to ignore.
+ */
+function onTrapKeydown(event: KeyboardEvent): void {
+  if (!isOpen || event.key !== 'Tab') return;
+
+  const items = focusables();
+  if (items.length === 0) return;
+
+  const first = items[0];
+  const last = items[items.length - 1];
+  const active = mountPoint?.getRootNode() instanceof ShadowRoot ? shadow?.activeElement : null;
+
+  if (event.shiftKey && (active === first || active === null)) {
+    event.preventDefault();
+    last?.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first?.focus();
+  }
+}
+
 async function open(): Promise<void> {
   if (isOpen) return;
   isOpen = true;
+
+  focusBeforeOpen = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
   ensureHost();
   const host = hostElement();
   if (host) host.style.display = 'block';
   document.addEventListener('focusin', onFocusIn);
+  window.addEventListener('keydown', onTrapKeydown, true);
   renderOverlay();
 
   await ensureIndex();
@@ -128,9 +178,15 @@ function close(): void {
   if (!isOpen) return;
   isOpen = false;
   document.removeEventListener('focusin', onFocusIn);
+  window.removeEventListener('keydown', onTrapKeydown, true);
   const host = hostElement();
   if (host) host.style.display = 'none';
   if (mountPoint) render(null, mountPoint);
+
+  // Put the user back where they were, but never steal focus into a element
+  // that has since left the page.
+  if (focusBeforeOpen?.isConnected) focusBeforeOpen.focus();
+  focusBeforeOpen = null;
 }
 
 /**
