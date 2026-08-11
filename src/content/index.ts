@@ -5,6 +5,7 @@ import { mountFolderPanel } from './ui/panelHost';
 import { mountSlashPicker } from './ui/slashPicker';
 import { resumePendingJump } from './jumpToMessage';
 import { mountSyncBridge } from './syncBridge';
+import { initEntitlements } from '@/core/licenseState';
 import { startUsagePolling } from '@/core/usage';
 import { getChatOrganization, getUsage } from '@/api/claudeAdapter';
 
@@ -19,6 +20,10 @@ import { getChatOrganization, getUsage } from '@/api/claudeAdapter';
  * has consented. Wiring that consent to runSync lands in M5.
  */
 function bootstrap(): void {
+  // Before any UI: the search cap, folder limit, prompt limit and variable
+  // support all read entitlements, and this context starts out assuming free.
+  initEntitlements();
+
   mountSyncBanner();
   mountSearchOverlay();
   // Serves the popup's "Start indexing" command. Listening is not indexing:

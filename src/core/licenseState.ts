@@ -1,4 +1,4 @@
-import { getLocal, getSync, setLocal, setSync } from '@/shared/storage';
+import { getLocal, getSync, setLocal, setSync, subscribeLocalChanges } from '@/shared/storage';
 import { setPro } from './entitlements';
 import { LicenseError, dodoProvider, newInstanceId, type LicenseProvider } from './license';
 
@@ -97,6 +97,26 @@ export async function applyStoredLicense(now = new Date()): Promise<LicenseState
   const status = deriveStatus(record, now);
   setPro(isProStatus(status));
   return { status, record };
+}
+
+/**
+ * Hydrates entitlements in this context and keeps them current.
+ *
+ * MUST be called from every context that reads entitlements. `entitlements.ts`
+ * is module-level memory, so the popup, the content script, the options page
+ * and the service worker each hold a separate copy that defaults to free.
+ * Without this, activating a licence in settings leaves every other surface
+ * still gated, which is exactly the bug this fixes.
+ *
+ * The storage listener matters as much as the initial read: the popup is often
+ * already open when a licence is activated or removed elsewhere.
+ */
+export function initEntitlements(): () => void {
+  void applyStoredLicense();
+
+  return subscribeLocalChanges((keys) => {
+    if (keys.includes('licenseCache')) void applyStoredLicense();
+  });
 }
 
 export interface ActivateOutcome {

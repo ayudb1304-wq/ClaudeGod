@@ -9,7 +9,7 @@ import {
   updatePrompt,
   type Prompt,
 } from '@/core/prompts';
-import { getEntitlements } from '@/core/entitlements';
+import { getEntitlements, subscribeEntitlements } from '@/core/entitlements';
 import { StorageQuotaError } from '@/shared/storage';
 import { strings } from '@/shared/strings';
 
@@ -46,7 +46,12 @@ export function PromptLibrary() {
     return unsubscribe;
   }, []);
 
-  const limit = getEntitlements().maxPrompts;
+  // Same reason as the popup's export section: entitlements arrive from
+  // storage after first render, so a paying customer would otherwise see the
+  // free 10-prompt ceiling until they reloaded the page.
+  const [limit, setLimit] = useState(getEntitlements().maxPrompts);
+  useEffect(() => subscribeEntitlements((value) => setLimit(value.maxPrompts)), []);
+
   const limitReached = limit !== null && prompts.length >= limit;
 
   function report(caught: unknown): void {

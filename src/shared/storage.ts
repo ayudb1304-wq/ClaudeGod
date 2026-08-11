@@ -225,6 +225,24 @@ export function subscribeSyncChanges(listener: (keys: SyncKey[]) => void): () =>
   return () => chrome.storage.onChanged.removeListener(handler);
 }
 
+/**
+ * Notifies when a device-local key changes.
+ *
+ * Needed because entitlements live in per-context module memory: the options
+ * page activating a licence must reach the popup and the content script, and
+ * storage is the only thing all three share.
+ */
+export function subscribeLocalChanges(listener: (keys: LocalKey[]) => void): () => void {
+  const handler = (changes: Record<string, unknown>, area: string): void => {
+    if (area !== 'local') return;
+    const touched = LOCAL_KEYS.filter((key) => key in changes);
+    if (touched.length > 0) listener(touched);
+  };
+
+  chrome.storage.onChanged.addListener(handler);
+  return () => chrome.storage.onChanged.removeListener(handler);
+}
+
 /** Settings → "Delete all local data" (FEATURES 8.1). */
 export async function clearAllStorage(): Promise<void> {
   await chrome.storage.sync.clear();

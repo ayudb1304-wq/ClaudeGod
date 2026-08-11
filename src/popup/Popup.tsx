@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { formatDuration, formatTimeUntil, readCachedUsage, type UsageSnapshot } from '@/core/usage';
 import { loadFolders, subscribeFolders, type Folder } from '@/core/folders';
 import { getConversationTitles } from '@/core/db';
-import { getEntitlements } from '@/core/entitlements';
+import { getEntitlements, subscribeEntitlements } from '@/core/entitlements';
 import { createDexieExportSource, exportConversationsZip } from '@/core/exporter';
 import { conversationWebUrl } from '@/api/claudeAdapter';
 import { downloadFile } from '@/shared/download';
@@ -164,6 +164,11 @@ function FoldersSection() {
 function ExportSection() {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Entitlements hydrate asynchronously from storage, so reading them once at
+  // first render would leave a paying customer looking at the free-tier CTA.
+  const [canExport, setCanExport] = useState(getEntitlements().bulkExport);
+
+  useEffect(() => subscribeEntitlements((value) => setCanExport(value.bulkExport)), []);
 
   async function exportAll(): Promise<void> {
     setBusy(true);
@@ -188,7 +193,7 @@ function ExportSection() {
     }
   }
 
-  if (!getEntitlements().bulkExport) {
+  if (!canExport) {
     // Quiet contextual CTA, never a modal (FEATURES 7.1).
     return (
       <p style={{ margin: '10px 0 0', fontSize: 11, color: '#888' }}>{strings.exportUi.proOnly}</p>
