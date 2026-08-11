@@ -167,7 +167,12 @@ export function SearchOverlay({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div class="cg-panel" role="dialog" aria-modal="true" aria-label={strings.search.ariaLabel}>
+      <div
+        class="cg-root cg-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label={strings.search.ariaLabel}
+      >
         <input
           ref={inputRef}
           class="cg-input"
@@ -182,13 +187,31 @@ export function SearchOverlay({
         />
         {body}
         <div class="cg-footer">
-          {cap === null ? (
-            strings.search.footerPro
-          ) : (
-            <>
-              {strings.search.footerFree(cap)} <UpgradeLink source="search-cap" />
-            </>
-          )}
+          <span>
+            {cap === null ? (
+              strings.search.footerPro
+            ) : (
+              <>
+                {strings.search.footerFree(cap)} <UpgradeLink source="search-cap" />
+              </>
+            )}
+          </span>
+          {/* Raycast's habit: the footer teaches the shortcuts rather than
+              hiding them in a help page nobody opens. */}
+          <span class="cg-hints">
+            <span class="cg-hint">
+              <kbd class="cg-kbd">↑</kbd>
+              <kbd class="cg-kbd">↓</kbd>
+              {strings.search.hintNavigate}
+            </span>
+            <span class="cg-hint">
+              <kbd class="cg-kbd">↵</kbd>
+              {strings.search.hintOpen}
+            </span>
+            <span class="cg-hint">
+              <kbd class="cg-kbd">esc</kbd>
+            </span>
+          </span>
         </div>
       </div>
     </div>

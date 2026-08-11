@@ -37,6 +37,8 @@ export const strings = {
         ? `Type to search ${String(indexed)} indexed chats.`
         : 'Nothing indexed yet. Start indexing from the extension popup.',
     noResults: (query: string) => `No matches for "${query}". Try fewer or different words.`,
+    hintNavigate: 'navigate',
+    hintOpen: 'open',
     footerPro: 'Searching your full history.',
     footerFree: (cap: number) =>
       `Searching your last ${String(cap)} chats. Upgrade for full history.`,

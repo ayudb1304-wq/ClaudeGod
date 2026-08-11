@@ -1,3 +1,5 @@
+import { shadowTheme } from '@/shared/theme';
+
 /**
  * Folder panel styles, injected into the panel's own shadow root.
  *
@@ -6,7 +8,7 @@
  * rather than any class name of theirs.
  */
 export const PANEL_STYLES = `
-:host, * { box-sizing: border-box; }
+${shadowTheme()}
 
 /* Right edge, not left: Claude's own chat sidebar lives on the left, and a
    drawer that covers it is a drawer people close and never open again. */
@@ -19,16 +21,16 @@ export const PANEL_STYLES = `
   flex-direction: row-reverse;
   align-items: stretch;
   font: 400 13px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif;
-  color: #1a1a1a;
+  color: var(--cg-text);
 }
 
 .cg-drawer {
   width: 268px;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
-  border-left: 1px solid rgba(0, 0, 0, .1);
-  box-shadow: 0 0 24px rgba(0, 0, 0, .18);
+  background: var(--cg-bg);
+  border-left: 1px solid var(--cg-border);
+  box-shadow: 0 0 24px var(--cg-border-strong);
   transition: margin-right .18s ease;
   overflow: hidden;
   /* Keeps the drawer's own controls clear of the usage widget, which floats
@@ -48,17 +50,17 @@ export const PANEL_STYLES = `
 /* The handle is the only thing we show by default: one small tab, not a redesign. */
 .cg-handle {
   padding: 14px 5px;
-  border: 1px solid rgba(0, 0, 0, .1);
+  border: 1px solid var(--cg-border);
   border-right: 0;
-  border-radius: 8px 0 0 8px;
-  background: #ffffff;
+  border-radius: var(--cg-r-row) 0 0 8px;
+  background: var(--cg-bg);
   color: inherit;
   font: inherit;
   font-size: 11px;
   letter-spacing: .04em;
   writing-mode: vertical-rl;
   cursor: pointer;
-  box-shadow: -2px 0 8px rgba(0, 0, 0, .12);
+  box-shadow: -2px 0 8px var(--cg-border);
 }
 
 .cg-head {
@@ -67,7 +69,7 @@ export const PANEL_STYLES = `
   justify-content: space-between;
   gap: 8px;
   padding: 12px 12px 8px;
-  border-bottom: 1px solid rgba(0, 0, 0, .08);
+  border-bottom: 1px solid var(--cg-border);
 }
 
 .cg-head h2 { margin: 0; font-size: 13px; font-weight: 600; }
@@ -80,8 +82,12 @@ export const PANEL_STYLES = `
   overflow-y: auto;
 }
 
-.cg-folder { border-radius: 8px; margin-bottom: 2px; }
-.cg-folder[data-over="true"] { background: rgba(217, 119, 6, .16); outline: 1px dashed rgba(217, 119, 6, .7); }
+.cg-folder { border-radius: var(--cg-r-row); margin-bottom: 2px; }
+/* Drop target uses the accent, so the whole product speaks one colour. */
+.cg-folder[data-over="true"] {
+  background: var(--cg-accent-soft);
+  outline: 1px dashed var(--cg-accent);
+}
 
 .cg-folder-head {
   display: flex;
@@ -100,7 +106,7 @@ export const PANEL_STYLES = `
   white-space: nowrap;
 }
 
-.cg-count { flex: none; font-size: 11px; color: rgba(0, 0, 0, .45); }
+.cg-count { flex: none; font-size: 11px; color: var(--cg-text-faint); }
 
 .cg-chats { margin: 0 0 4px; padding: 0 8px 4px 26px; list-style: none; }
 
@@ -125,14 +131,14 @@ export const PANEL_STYLES = `
   white-space: nowrap;
 }
 
-.cg-chat[data-known="false"] button.cg-link { color: rgba(0, 0, 0, .45); font-style: italic; }
+.cg-chat[data-known="false"] button.cg-link { color: var(--cg-text-faint); font-style: italic; }
 
 .cg-icon {
   flex: none;
   padding: 0 3px;
   border: 0;
   background: none;
-  color: rgba(0, 0, 0, .45);
+  color: var(--cg-text-faint);
   font: inherit;
   cursor: pointer;
 }
@@ -142,13 +148,13 @@ export const PANEL_STYLES = `
 .cg-empty, .cg-note {
   margin: 0;
   padding: 10px 12px;
-  color: rgba(0, 0, 0, .55);
+  color: var(--cg-text-muted);
   font-size: 12px;
 }
 
 .cg-foot {
   padding: 8px 10px;
-  border-top: 1px solid rgba(0, 0, 0, .08);
+  border-top: 1px solid var(--cg-border);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -157,8 +163,8 @@ export const PANEL_STYLES = `
 .cg-input {
   width: 100%;
   padding: 6px 8px;
-  border: 1px solid rgba(0, 0, 0, .18);
-  border-radius: 6px;
+  border: 1px solid var(--cg-border-strong);
+  border-radius: var(--cg-r-ctl);
   font: inherit;
   color: inherit;
   background: transparent;
@@ -168,8 +174,8 @@ export const PANEL_STYLES = `
 
 .cg-btn {
   padding: 6px 10px;
-  border: 1px solid rgba(0, 0, 0, .18);
-  border-radius: 6px;
+  border: 1px solid var(--cg-border-strong);
+  border-radius: var(--cg-r-ctl);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -179,17 +185,6 @@ export const PANEL_STYLES = `
 
 .cg-btn:disabled { opacity: .5; cursor: default; }
 
-.cg-error { color: #b3492e; }
+.cg-error { color: var(--cg-danger); }
 
-@media (prefers-color-scheme: dark) {
-  .cg-wrap { color: #ededed; }
-  .cg-drawer { background: #1c1c1c; border-left-color: rgba(255, 255, 255, .12); }
-  .cg-handle { background: #1c1c1c; border-color: rgba(255, 255, 255, .14); }
-  .cg-head { border-bottom-color: rgba(255, 255, 255, .1); }
-  .cg-count, .cg-icon, .cg-empty, .cg-note { color: rgba(255, 255, 255, .5); }
-  .cg-chat[data-known="false"] button.cg-link { color: rgba(255, 255, 255, .45); }
-  .cg-foot { border-top-color: rgba(255, 255, 255, .1); }
-  .cg-input, .cg-btn { border-color: rgba(255, 255, 255, .2); }
-  .cg-error { color: #e08a70; }
-}
 `;

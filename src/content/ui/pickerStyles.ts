@@ -1,3 +1,5 @@
+import { shadowTheme } from '@/shared/theme';
+
 /**
  * Slash-picker styles, injected into the picker's own shadow root.
  *
@@ -5,7 +7,7 @@
  * is an autocomplete, not a dialog.
  */
 export const PICKER_STYLES = `
-:host, * { box-sizing: border-box; }
+${shadowTheme()}
 
 .cg-picker {
   position: fixed;
@@ -13,10 +15,10 @@ export const PICKER_STYLES = `
   max-height: 46vh;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
-  color: #1a1a1a;
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, .24);
+  background: var(--cg-bg);
+  color: var(--cg-text);
+  border-radius: var(--cg-r-panel);
+  box-shadow: var(--cg-shadow-sm);
   font: 400 13px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif;
   overflow: hidden;
 }
@@ -24,25 +26,25 @@ export const PICKER_STYLES = `
 .cg-list { margin: 0; padding: 5px; list-style: none; overflow-y: auto; }
 
 .cg-item { padding: 7px 9px; border-radius: 7px; cursor: pointer; }
-.cg-item[data-active="true"] { background: rgba(0, 0, 0, .07); }
+.cg-item[data-active="true"] { background: var(--cg-accent-soft); }
 
 .cg-item-title { font-weight: 550; }
 
 .cg-item-body {
   font-size: 12px;
-  color: rgba(0, 0, 0, .6);
+  color: var(--cg-bg-raised);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.cg-note { margin: 0; padding: 14px 12px; color: rgba(0, 0, 0, .55); font-size: 12px; }
+.cg-note { margin: 0; padding: 14px 12px; color: var(--cg-text-muted); font-size: 12px; }
 
 .cg-foot {
   padding: 7px 11px;
-  border-top: 1px solid rgba(0, 0, 0, .08);
+  border-top: 1px solid var(--cg-border);
   font-size: 11px;
-  color: rgba(0, 0, 0, .5);
+  color: var(--cg-text-faint);
 }
 
 .cg-vars { padding: 10px 11px; display: flex; flex-direction: column; gap: 7px; }
@@ -50,8 +52,8 @@ export const PICKER_STYLES = `
 
 .cg-input {
   padding: 6px 8px;
-  border: 1px solid rgba(0, 0, 0, .18);
-  border-radius: 6px;
+  border: 1px solid var(--cg-border-strong);
+  border-radius: var(--cg-r-ctl);
   font: inherit;
   color: inherit;
   background: transparent;
@@ -61,8 +63,8 @@ export const PICKER_STYLES = `
 
 .cg-btn {
   padding: 5px 10px;
-  border: 1px solid rgba(0, 0, 0, .18);
-  border-radius: 6px;
+  border: 1px solid var(--cg-border-strong);
+  border-radius: var(--cg-r-ctl);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -70,11 +72,4 @@ export const PICKER_STYLES = `
   cursor: pointer;
 }
 
-@media (prefers-color-scheme: dark) {
-  .cg-picker { background: #1f1f1f; color: #ededed; }
-  .cg-item[data-active="true"] { background: rgba(255, 255, 255, .09); }
-  .cg-item-body, .cg-note, .cg-foot { color: rgba(255, 255, 255, .58); }
-  .cg-foot { border-top-color: rgba(255, 255, 255, .1); }
-  .cg-input, .cg-btn { border-color: rgba(255, 255, 255, .2); }
-}
 `;
