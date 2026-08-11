@@ -4,6 +4,7 @@ import {
   clampThreshold,
   narrowSettings,
   normaliseShortcutKey,
+  interpretShortcutKeydown,
   readSettings,
   updateSettings,
 } from '@/shared/settings';
@@ -111,5 +112,60 @@ describe('round trip through storage', () => {
     storage.uninstall();
     // No chrome global at all: readSettings must still answer.
     await expect(readSettings()).resolves.toEqual(DEFAULT_SETTINGS);
+  });
+});
+
+describe('interpretShortcutKeydown', () => {
+  const press = (over: Partial<Parameters<typeof interpretShortcutKeydown>[0]>) =>
+    interpretShortcutKeydown({ key: 'k', ctrlKey: false, metaKey: false, shiftKey: false, ...over });
+
+  it('binds a letter held with Ctrl', () => {
+    expect(press({ key: 'j', ctrlKey: true })).toEqual({
+      kind: 'set',
+      value: { key: 'j', requireShift: false },
+    });
+  });
+
+  it('binds with Cmd on mac', () => {
+    expect(press({ key: 'j', metaKey: true })).toMatchObject({ kind: 'set' });
+  });
+
+  it('records Shift as part of the binding', () => {
+    // Shift uppercases event.key, which must not leak into stored settings.
+    expect(press({ key: 'K', ctrlKey: true, shiftKey: true })).toEqual({
+      kind: 'set',
+      value: { key: 'k', requireShift: true },
+    });
+  });
+
+  it('cancels on Escape', () => {
+    expect(press({ key: 'Escape' })).toEqual({ kind: 'cancel' });
+  });
+
+  it.each(['Control', 'Shift', 'Alt', 'Meta'])('ignores the bare %s keydown', (key) => {
+    // Holding the modifier fires first; reacting would abort every capture.
+    expect(press({ key })).toEqual({ kind: 'ignore' });
+  });
+
+  it('rejects a bare letter, explaining why', () => {
+    // The whole point of requiring a modifier: a bare letter would fire while
+    // the user types into Claude's composer.
+    expect(press({ key: 'j' })).toEqual({ kind: 'invalid', reason: 'needs-modifier' });
+  });
+
+  it.each([['digit', '1'], ['function key', 'F5'], ['punctuation', '/'], ['space', ' ']])(
+    'rejects %s with a modifier held',
+    (_label, key) => {
+      expect(press({ key, ctrlKey: true })).toEqual({ kind: 'invalid', reason: 'needs-letter' });
+    },
+  );
+
+  it('never returns a silent no-op for a real press', () => {
+    // Every outcome is either a binding, a cancel, or an explanation. "Nothing
+    // happened" was the reported bug.
+    const outcomes = ['a', '1', 'Escape', 'F1', '/'].map((key) =>
+      press({ key, ctrlKey: key !== 'Escape' }),
+    );
+    expect(outcomes.every((outcome) => outcome.kind !== 'ignore')).toBe(true);
   });
 });

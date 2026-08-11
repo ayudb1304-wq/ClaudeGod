@@ -72,6 +72,42 @@ export function clampThreshold(value: number): number {
   return Math.min(95, Math.max(50, Math.round(value)));
 }
 
+/** Modifier presses arrive as their own keydown before the letter does. */
+const BARE_MODIFIERS = new Set(['Control', 'Shift', 'Alt', 'Meta', 'AltGraph', 'CapsLock']);
+
+export type ShortcutCapture =
+  | { kind: 'cancel' }
+  /** Holding a modifier: wait for the letter rather than reacting. */
+  | { kind: 'ignore' }
+  /** A real press we cannot bind, so the UI must say why. */
+  | { kind: 'invalid'; reason: 'needs-modifier' | 'needs-letter' }
+  | { kind: 'set'; value: ShortcutSettings };
+
+/**
+ * Decides what a keypress means while rebinding the search shortcut.
+ *
+ * Pure so the rules are testable without a DOM. The UI only has to route the
+ * result, which is what keeps "nothing happened" from being a possible outcome:
+ * every real press produces either a binding or an explanation.
+ */
+export function interpretShortcutKeydown(event: {
+  key: string;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+}): ShortcutCapture {
+  if (event.key === 'Escape') return { kind: 'cancel' };
+  if (BARE_MODIFIERS.has(event.key)) return { kind: 'ignore' };
+
+  // Ctrl/Cmd is mandatory: a bare letter would fire while typing into Claude.
+  if (!event.ctrlKey && !event.metaKey) return { kind: 'invalid', reason: 'needs-modifier' };
+
+  const key = normaliseShortcutKey(event.key, '');
+  if (!key) return { kind: 'invalid', reason: 'needs-letter' };
+
+  return { kind: 'set', value: { key, requireShift: event.shiftKey } };
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
 }

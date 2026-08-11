@@ -161,6 +161,10 @@ export const strings = {
     shortcut: 'Search shortcut',
     shortcutHint: 'Click, then press your combination. Ctrl or Cmd is always required.',
     shortcutCapturing: 'Press keys…',
+    shortcutEscapeHint: 'Hold Ctrl or Cmd and press a letter. Escape cancels.',
+    shortcutNeedsModifier: 'Hold Ctrl or Cmd as well, so it will not fire while you type.',
+    shortcutNeedsLetter: 'Pick a letter, A to Z.',
+    shortcutSaveFailed: 'Could not save that shortcut. Try again in a moment.',
     shortcutComposerNote: (fallback: string) =>
       `While you are typing in Claude's message box, use ${fallback} instead.`,
     widget: 'Usage widget',

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'preact/hooks';
 import {
   DEFAULT_SETTINGS,
   clampThreshold,
-  normaliseShortcutKey,
+  interpretShortcutKeydown,
   readSettings,
   updateSettings,
   updateUsageWidgetSettings,
@@ -37,6 +37,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 export function SettingsSection() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [capturing, setCapturing] = useState(false);
+  const [captureHint, setCaptureHint] = useState<string | null>(null);
   const [confirmingWipe, setConfirmingWipe] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   // The threshold slider stays usable on free: the setting is remembered, it
@@ -56,24 +57,51 @@ export function SettingsSection() {
     await updateSettings(next);
   }, []);
 
-  /** Captures the next letter pressed with Ctrl/Cmd held. */
-  const onCaptureKey = useCallback(
-    (event: KeyboardEvent): void => {
+  /**
+   * Listens on the window, not the button.
+   *
+   * A handler bound to the button only fires while that button holds focus,
+   * which made rebinding silently do nothing the moment focus moved. Capture
+   * phase also lets us preventDefault before the browser acts on combinations
+   * like Ctrl+K, which otherwise jumps to the address bar.
+   */
+  useEffect(() => {
+    if (!capturing) return;
+
+    const onKey = (event: KeyboardEvent): void => {
+      const result = interpretShortcutKeydown(event);
+      if (result.kind === 'ignore') return;
+
       event.preventDefault();
-      if (event.key === 'Escape') {
+      event.stopPropagation();
+
+      if (result.kind === 'cancel') {
         setCapturing(false);
+        setCaptureHint(null);
         return;
       }
-      if (!event.metaKey && !event.ctrlKey) return;
-
-      const key = normaliseShortcutKey(event.key, '');
-      if (!key) return;
+      if (result.kind === 'invalid') {
+        // Never fail silently: say what is wrong and keep listening.
+        setCaptureHint(
+          result.reason === 'needs-modifier'
+            ? strings.settingsUi.shortcutNeedsModifier
+            : strings.settingsUi.shortcutNeedsLetter,
+        );
+        return;
+      }
 
       setCapturing(false);
-      void patch({ searchShortcut: { key, requireShift: event.shiftKey } });
-    },
-    [patch],
-  );
+      setCaptureHint(null);
+      void patch({ searchShortcut: result.value }).catch(() => {
+        setCaptureHint(strings.settingsUi.shortcutSaveFailed);
+      });
+    };
+
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+    };
+  }, [capturing, patch]);
 
   const wipe = useCallback(async (): Promise<void> => {
     setNotice(null);
@@ -101,14 +129,19 @@ export function SettingsSection() {
       <Row label={strings.settingsUi.shortcut} hint={strings.settingsUi.shortcutHint}>
         <button
           type="button"
-          onKeyDown={capturing ? onCaptureKey : undefined}
           onClick={() => {
-            setCapturing(true);
+            setCaptureHint(null);
+            setCapturing((on) => !on);
           }}
-          style={{ minWidth: 150, fontFamily: 'ui-monospace, monospace' }}
+          style={{ minWidth: 170, fontFamily: 'ui-monospace, monospace' }}
         >
           {capturing ? strings.settingsUi.shortcutCapturing : combo}
         </button>
+        {capturing && (
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: captureHint ? '#a05a2c' : '#777' }}>
+            {captureHint ?? strings.settingsUi.shortcutEscapeHint}
+          </p>
+        )}
         {!shortcut.requireShift && (
           <p style={{ margin: '4px 0 0', fontSize: 12, color: '#777' }}>
             {strings.settingsUi.shortcutComposerNote(`${MOD_LABEL}+Shift+${shortcut.key.toUpperCase()}`)}
