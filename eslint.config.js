@@ -31,9 +31,21 @@ export default tseslint.config(
     rules: { 'no-console': 'off' },
   },
   {
-    // Config files are plain JS and outside the TS project; type-aware rules
-    // cannot resolve them and would error on the project service lookup.
-    files: ['**/*.js'],
+    // Config files and local tooling scripts are plain JS outside the TS
+    // project; type-aware rules cannot resolve them and would error on the
+    // project service lookup.
+    files: ['**/*.js', '**/*.mjs'],
     extends: [tseslint.configs.disableTypeChecked],
+  },
+  {
+    // scripts/ runs under Node on a developer's machine, never in the browser
+    // and never in the shipped extension.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: { process: 'readonly', console: 'readonly', fetch: 'readonly' },
+    },
+    // A CLI tool's entire output is console. The no-console rule exists to keep
+    // logging out of the shipped bundle, which this file is not part of.
+    rules: { 'no-console': 'off' },
   },
 );

@@ -33,6 +33,29 @@ describe('network allowlist', () => {
     expect(files.length).toBeGreaterThan(0);
   });
 
+  /**
+   * The Dodo API key is used only by scripts/dodo-setup.mjs on a developer's
+   * machine. Vite inlines every VITE_-prefixed variable into the bundle, so a
+   * secret that ever gained that prefix, or that src/ read directly, would ship
+   * inside the CRX and be readable by anyone who downloads it.
+   */
+  it('no source file reads a secret from the environment', () => {
+    const violations = files
+      .filter((file) => /DODO_API_KEY|process\s*\.\s*env/.test(stripComments(file.text)))
+      .map((file) => file.path);
+
+    expect(violations).toEqual([]);
+  });
+
+  it('exposes no VITE_ variable whose name suggests a secret', () => {
+    const secretish = /import\.meta\.env\.VITE_\w*(KEY|SECRET|TOKEN|PASSWORD)\w*/i;
+    const violations = files
+      .filter((file) => secretish.test(stripComments(file.text)))
+      .map((file) => file.path);
+
+    expect(violations).toEqual([]);
+  });
+
   it('references no host outside the allowlist', () => {
     const violations: string[] = [];
 
