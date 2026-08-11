@@ -30,12 +30,31 @@ const API_BASE: Record<DodoEnvironment, string> = {
 export const DODO_API_BASE = API_BASE[DODO_ENVIRONMENT];
 
 /**
- * Hosted checkout, opened in a new tab on upgrade (ARCHITECTURE §6 step 1).
+ * Hosted checkout host, per environment.
  *
- * Left empty until the product exists; the UI hides the upgrade button rather
- * than linking somewhere broken.
+ * Test and live use DIFFERENT checkout hosts, which is easy to miss because the
+ * docs show only the live one. Pointing a test build at the live host returns
+ * "error/not-found" for a product that exists perfectly well in test.
  */
-export const DODO_CHECKOUT_URL: string = import.meta.env.VITE_DODO_CHECKOUT_URL ?? '';
+const CHECKOUT_BASE: Record<DodoEnvironment, string> = {
+  test: 'https://test.checkout.dodopayments.com',
+  live: 'https://checkout.dodopayments.com',
+};
+
+/**
+ * The product to sell. Configured as a bare id, not a full URL, so the checkout
+ * host is always derived from DODO_ENVIRONMENT and the two cannot disagree.
+ * Storing a whole URL let a test build carry a live checkout link.
+ */
+export const DODO_PRODUCT_ID: string = import.meta.env.VITE_DODO_PRODUCT_ID ?? '';
+
+/**
+ * Hosted checkout, opened in a new tab on upgrade (ARCHITECTURE §6 step 1).
+ * Empty until a product is configured; the UI hides the CTA rather than
+ * linking somewhere broken.
+ */
+export const DODO_CHECKOUT_URL: string =
+  DODO_PRODUCT_ID.length > 0 ? `${CHECKOUT_BASE[DODO_ENVIRONMENT]}/buy/${DODO_PRODUCT_ID}` : '';
 
 export function hasCheckoutUrl(): boolean {
   return DODO_CHECKOUT_URL.length > 0;

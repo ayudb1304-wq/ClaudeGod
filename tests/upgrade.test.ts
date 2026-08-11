@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildUpgradeUrl, canUpgrade } from '@/shared/upgrade';
-import { DODO_CHECKOUT_URL } from '@/shared/config';
+import { DODO_CHECKOUT_URL, DODO_API_BASE } from '@/shared/config';
 import { readSourceFiles, stripComments } from './helpers/source';
 
 /**
@@ -66,3 +66,26 @@ describe('CTA coverage', () => {
     expect(code).not.toMatch(/alert\(|confirm\(|showModal|position:\s*fixed/i);
   });
 });
+
+describe('checkout host follows the environment', () => {
+  /**
+   * Regression: the checkout URL was configured as a full literal pointing at
+   * the live host, so a test build linked to live checkout and every upgrade
+   * click landed on error/not-found. Test and live use different checkout
+   * hosts, which the docs only show for live.
+   */
+  it('uses a checkout host matching the configured API environment', () => {
+    if (!DODO_CHECKOUT_URL) return;
+    const checkoutHost = new URL(DODO_CHECKOUT_URL).host;
+    const isTestApi = DODO_API_BASE.includes('test.');
+    expect(checkoutHost.startsWith('test.')).toBe(isTestApi);
+  });
+
+  it('derives the link from a bare product id, never a stored URL', () => {
+    const source = readSourceFiles().find((file) => file.path === 'src/shared/config.ts');
+    const code = stripComments(source?.text ?? '');
+    // A configurable full URL is what let the two disagree in the first place.
+    expect(code).not.toContain('VITE_DODO_CHECKOUT_URL');
+    expect(code).toContain('VITE_DODO_PRODUCT_ID');
+  });
+})

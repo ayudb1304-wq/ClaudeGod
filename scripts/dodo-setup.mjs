@@ -155,18 +155,25 @@ async function main() {
     expires_at: null,
   });
 
-  const checkoutUrl = `https://checkout.dodopayments.com/buy/${productId}`;
+  // Test and live use DIFFERENT checkout hosts. Deriving it here from the same
+  // flag that picked the API base keeps the two from ever disagreeing.
+  const checkoutHost = LIVE
+    ? 'https://checkout.dodopayments.com'
+    : 'https://test.checkout.dodopayments.com';
+  const checkoutUrl = `${checkoutHost}/buy/${productId}`;
 
   console.log('\n' + '='.repeat(58));
   console.log(`LICENCE KEY   ${key}`);
   console.log(`CHECKOUT URL  ${checkoutUrl}`);
   console.log('='.repeat(58));
 
-  if (!env.VITE_DODO_CHECKOUT_URL) {
-    appendFileSync(ENV_PATH, `\nVITE_DODO_CHECKOUT_URL=${checkoutUrl}\n`);
-    console.log('\nAppended VITE_DODO_CHECKOUT_URL to .env');
+  if (!env.VITE_DODO_PRODUCT_ID) {
+    // The id, not a URL: the extension derives the checkout host from
+    // VITE_DODO_ENV, so the two can never point at different environments.
+    appendFileSync(ENV_PATH, `\nVITE_DODO_PRODUCT_ID=${productId}\n`);
+    console.log('\nAppended VITE_DODO_PRODUCT_ID to .env');
   } else {
-    console.log('\n.env already has VITE_DODO_CHECKOUT_URL; left it alone.');
+    console.log('\n.env already has VITE_DODO_PRODUCT_ID; left it alone.');
   }
 
   console.log('\nNext:');
