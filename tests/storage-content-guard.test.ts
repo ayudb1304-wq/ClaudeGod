@@ -55,6 +55,10 @@ describe('storage content guard', () => {
       // ISO dates only — nothing content-flavoured can pass through them.
       'usageCache',
       'usageAlert',
+      // M5 (early): indexing consent flag + last-run summary. Booleans, counts
+      // and ISO dates only.
+      'syncConsent',
+      'syncSummary',
     ]);
   });
 

@@ -110,6 +110,14 @@ export function conversationWebUrl(convUuid: string): string {
   return `${CLAUDE_ORIGIN}/chat/${convUuid}`;
 }
 
+/** Match pattern for `chrome.tabs.query`. Same reasoning as above. */
+export const CLAUDE_TAB_PATTERN = `${CLAUDE_ORIGIN}/*`;
+
+/** True when a tab URL belongs to Claude, so the popup can find a host tab. */
+export function isClaudeUrl(url: string | undefined): boolean {
+  return typeof url === 'string' && url.startsWith(`${CLAUDE_ORIGIN}/`);
+}
+
 /**
  * Same-origin GET carrying the user's existing claude.ai session cookies.
  *

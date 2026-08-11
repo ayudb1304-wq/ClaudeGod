@@ -4,6 +4,7 @@ import { mountUsageWidget } from './ui/usageWidget';
 import { mountFolderPanel } from './ui/panelHost';
 import { mountSlashPicker } from './ui/slashPicker';
 import { resumePendingJump } from './jumpToMessage';
+import { mountSyncBridge } from './syncBridge';
 import { startUsagePolling } from '@/core/usage';
 import { getChatOrganization, getUsage } from '@/api/claudeAdapter';
 
@@ -20,6 +21,9 @@ import { getChatOrganization, getUsage } from '@/api/claudeAdapter';
 function bootstrap(): void {
   mountSyncBanner();
   mountSearchOverlay();
+  // Serves the popup's "Start indexing" command. Listening is not indexing:
+  // nothing runs until the user presses the button (FEATURES 7.2).
+  mountSyncBridge();
   // Finishes a jump whose navigation reloaded the content script.
   resumePendingJump();
 

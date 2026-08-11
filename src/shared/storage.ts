@@ -28,6 +28,11 @@ export const LOCAL_KEYS = [
   'debugLog',
   'usageCache',
   'usageAlert',
+  // M5 (early): indexing consent flag, and a summary of the last sync run
+  // (counts + ISO timestamp). Numbers and dates only; no conversation content
+  // can reach either, which is what keeps the storage-content guard honest.
+  'syncConsent',
+  'syncSummary',
 ] as const;
 
 export type SyncKey = (typeof SYNC_KEYS)[number];

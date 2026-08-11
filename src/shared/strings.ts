@@ -121,6 +121,30 @@ export const strings = {
     proOnly: 'Bulk export is a Pro feature.',
   },
 
+  indexing: {
+    title: 'Local index',
+    checking: 'Checking…',
+    // FEATURES 7.2: the explainer says what syncs and where it lives, before
+    // anything is read. Plain and specific, no reassurance theatre.
+    consentExplainer: 'Indexing reads your chat history so you can search it.',
+    consentPoints: [
+      'Everything stays in this browser.',
+      'Nothing is uploaded anywhere.',
+      'Read-only: your chats are never changed.',
+    ],
+    nothingYet: 'No chats indexed yet.',
+    indexed: (count: number) =>
+      `${String(count)} ${count === 1 ? 'chat' : 'chats'} indexed and searchable.`,
+    running: (done: number) => `Indexing… ${String(done)} done so far.`,
+    keepTabOpen: 'Keep the Claude tab open. You can close this popup.',
+    buttonStart: 'Start indexing',
+    buttonUpdate: 'Check for new chats',
+    buttonRunning: 'Indexing…',
+    needsClaudeTab: 'Open a claude.ai tab first, then try again.',
+    needsReload: 'Reload your claude.ai tab, then try again.',
+    failed: 'Could not start indexing. Try again in a moment.',
+  },
+
   sync: {
     // Calm, actionable error copy (CLAUDE.md). Never blame the user, never alarm them.
     degraded: 'Sync paused: Claude changed something. Your indexed chats still work.',

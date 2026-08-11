@@ -7,6 +7,7 @@ import { createDexieExportSource, exportConversationsZip } from '@/core/exporter
 import { conversationWebUrl } from '@/api/claudeAdapter';
 import { downloadFile } from '@/shared/download';
 import { strings } from '@/shared/strings';
+import { IndexingSection } from './IndexingSection';
 
 /**
  * Toolbar popup (FEATURES 3.1): displays the cached usage snapshot.
@@ -217,6 +218,8 @@ export function Popup() {
     >
       <h1 style={{ margin: '0 0 8px', fontSize: 15 }}>{strings.popup.title}</h1>
       <UsageSection />
+
+      <IndexingSection />
 
       <h2 style={{ margin: '16px 0 0', fontSize: 13 }}>{strings.folders.title}</h2>
       <FoldersSection />

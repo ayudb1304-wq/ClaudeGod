@@ -55,7 +55,10 @@ Scope cut per the M0 spike (api-notes §5): the authoritative `/usage` endpoint 
 - [ ] `core/license.ts` behind `LicenseProvider` interface; Dodo implementation first, LS stub. Activate/validate with instanceId; weekly revalidation alarm; 14-day grace; downgrade states.
 - [ ] `core/entitlements.ts` as single gate source; wire all Pro gates (search cap, alerts, folders>3, prompts>10, bulk export, variables).
 - [ ] Contextual upgrade CTAs (quiet, per FEATURES 7.1) + hosted-checkout links.
-- [ ] Onboarding: 3-step first-run with explicit "Start indexing" consent; `setUninstallURL`. *(This consent flow becomes the real sync trigger — until then the only trigger is the dev-hooks bridge, compiled in solely via `VITE_DEV_HOOKS=1` builds.)*
+- [ ] Onboarding: 3-step first-run with explicit "Start indexing" consent; `setUninstallURL`.
+  - [x] **Consent + sync trigger shipped early** (production builds could not index at all without it). Popup "Local index" section: consent explainer gated on `syncConsent`, "Start indexing" button, polled progress, incremental "Check for new chats". Typed popup→content messaging in `shared/messages.ts`; `core/syncRunner.ts` owns the single-flight run. No new permissions: `chrome.tabs.sendMessage` works off the existing claude.ai host grant.
+  - [ ] Still to do here: the 3-step first-run explainer as its own screen (today it is one inline block in the popup), and `setUninstallURL`.
+  - [ ] Not verified against a real account: the first backfill a user starts is also its first live test.
 - [ ] Settings page complete: shortcuts, widget, threshold, pause sync, delete-all-data, license mgmt.
 - [ ] End-to-end test purchase in MoR test mode; document flow in RELEASE.md.
 
