@@ -1,6 +1,22 @@
 /**
  * All user-facing strings live here (i18n-ready, per CLAUDE.md).
  *
+ * VOICE RULES for failure messages, applied as one pass over every string
+ * rather than judged one at a time. Written down because eight milestones of
+ * writing them in isolation produced four different voices.
+ *
+ * 1. Say what happened, then what to do. Nothing else.
+ * 2. Never our vocabulary. No "synced storage", "adapter", "cache", "local
+ *    copy". If the user would have to read our source to parse it, rewrite it.
+ * 3. Impersonal for our failures ("That did not save"), "you" only for the
+ *    user's own things ("Your folders hold too many chats").
+ * 4. No personality in failures. Plain, never cute. Warmth belongs in success.
+ * 5. "Try again in a moment" only where waiting genuinely helps. Otherwise it
+ *    is filler that makes a permanent problem look transient.
+ *
+ * One feature, one word: this product calls it *indexing* everywhere, never
+ * "sync", because the UI a user sees says "Start indexing".
+ *
  * APP_NAME is the ONLY place the display name is defined. PRD §11 risk 5:
  * the name leads with "Claude", so a forced rename must cost a listing edit
  * and one constant change, never a code sweep. Do not inline it elsewhere.
@@ -53,7 +69,9 @@ export const strings = {
     resetsIn: (duration: string) => `Resets in ${duration}`,
     updatedAgo: (duration: string) => `Updated ${duration} ago`,
     // Degraded path (ARCHITECTURE §5): calm, and never a guessed number.
-    unavailable: 'Usage info is taking a break. It will be back when Claude responds again.',
+    // Was "taking a break", the only string in the product with a personality,
+    // and it implied a decision where in fact a request failed.
+    unavailable: 'Usage is unavailable right now. It updates again when Claude responds.',
     popupEmpty: 'Open claude.ai to load your usage.',
     // Usage only refreshes while a claude.ai tab is open, so the popup can be
     // looking at an old figure. Say so plainly rather than implying it is live.
@@ -94,8 +112,9 @@ export const strings = {
     count: (n: number) => (n === 1 ? '1 chat' : `${String(n)} chats`),
     limitReached: (limit: number) =>
       `Free plan includes ${String(limit)} folders. Upgrade for unlimited.`,
-    // storage.sync is small by design; say what to do, not what went wrong.
-    quotaError: 'Synced storage is full. Remove a few chats from folders and try again.',
+    // "Synced storage" was chrome.storage.sync leaking into the UI. Nobody
+    // outside this codebase knows what that is.
+    quotaError: 'Your folders hold too many chats to sync. Remove a few and try again.',
     saveError: 'That change did not save. Try again in a moment.',
   },
 
@@ -120,7 +139,7 @@ export const strings = {
     variablesInsert: 'Insert',
     // Free tier inserts the raw body, placeholders and all (FEATURES 5.1).
     variablesPro: 'Filling placeholders is a Pro feature. Inserting the prompt as written.',
-    quotaError: 'Synced storage is full. Delete a prompt or shorten one, then try again.',
+    quotaError: 'Your prompts are too long to sync. Shorten or delete one, then try again.',
   },
 
   exportUi: {
@@ -129,9 +148,10 @@ export const strings = {
     folder: 'Export folder (.zip)',
     working: (done: number, total: number) => `Exporting ${String(done)}/${String(total)}…`,
     empty: 'Nothing to export yet.',
-    // Export reads the local mirror, so an unsynced chat genuinely has no data.
-    notIndexed: 'This chat is not in your local copy yet.',
-    failed: 'Export failed. Try again in a moment.',
+    // Export reads the local mirror, so an unindexed chat genuinely has no data.
+    // Same "local copy" leak the folder panel had; this one survived that fix.
+    notIndexed: 'This chat has not been indexed yet.',
+    failed: 'The export did not finish. Try again in a moment.',
     proOnly: 'Bulk export is a Pro feature.',
   },
 
@@ -178,7 +198,7 @@ export const strings = {
     shortcutEscapeHint: 'Hold Ctrl or Cmd and press a letter. Escape cancels.',
     shortcutNeedsModifier: 'Hold Ctrl or Cmd as well, so it will not fire while you type.',
     shortcutNeedsLetter: 'Pick a letter, A to Z.',
-    shortcutSaveFailed: 'Could not save that shortcut. Try again in a moment.',
+    shortcutSaveFailed: 'That shortcut did not save. Try again in a moment.',
     shortcutComposerNote: (fallback: string) =>
       `While you are typing in Claude's message box, use ${fallback} instead.`,
     widget: 'Usage widget',
@@ -196,7 +216,7 @@ export const strings = {
       'This deletes every indexed chat, your search index, folders, prompts and licence from this browser. It cannot be undone.',
     wipeConfirmButton: 'Yes, delete everything',
     wipeDone: 'All local data deleted.',
-    wipeFailed: 'Could not delete everything. Try again in a moment.',
+    wipeFailed: 'Not everything was deleted. Try again in a moment.',
     cancel: 'Cancel',
   },
 
@@ -204,8 +224,9 @@ export const strings = {
     title: 'Pro licence',
     active: 'Pro is active on this device.',
     // Honest about the state without alarming: nothing is broken for them yet.
-    activeGrace: 'Pro is active. We could not reach the licence server recently.',
-    expired: 'We could not confirm your licence for two weeks, so Pro is paused.',
+    activeGrace: 'Pro is active. The licence server was unreachable at the last check.',
+    expired:
+      'Your licence has not been confirmed for two weeks, so Pro is paused. It resumes as soon as the licence server can be reached.',
     freeExplainer: 'You are on the free plan. Paste a licence key to unlock Pro.',
     placeholder: 'Licence key',
     activate: 'Activate',
@@ -214,8 +235,10 @@ export const strings = {
     buyLink: 'Get a licence key',
     errorNotFound: 'That key was not recognised. Check for typos and try again.',
     errorCannotActivate: 'That licence cannot be activated. It may have been refunded.',
-    errorLimitReached: 'This key is already used on the maximum number of devices.',
-    errorNetwork: 'Could not reach the licence server. Check your connection.',
+    // Was a dead end: stated the problem and no way out of it.
+    errorLimitReached:
+      'This key is already active on the maximum number of devices. Remove it from one of them, then try again.',
+    errorNetwork: 'The licence server is unreachable. Check your connection, then try again.',
     errorServer: 'The licence server had a problem. Try again in a moment.',
   },
 
@@ -242,15 +265,15 @@ export const strings = {
     needsClaudeTab: 'Open a claude.ai tab to see indexing status.',
     // Reached only when we opened a tab and it never came alive, which nearly
     // always means signed out.
-    needsReload: 'Could not reach Claude. Check you are signed in at claude.ai, then try again.',
+    needsReload: 'Claude is unreachable. Check you are signed in at claude.ai, then try again.',
     openedTab: 'Opened a Claude tab in the background to index in.',
-    failed: 'Could not start indexing. Try again in a moment.',
+    failed: 'Indexing did not start. Try again in a moment.',
     pausedNote: 'Indexing is paused in settings. Search still works over what is already indexed.',
   },
 
   sync: {
     // Calm, actionable error copy (CLAUDE.md). Never blame the user, never alarm them.
-    degraded: 'Sync paused: Claude changed something. Your indexed chats still work.',
+    degraded: 'Indexing paused: Claude changed something. Your indexed chats still work.',
     progress: (indexed: number) => `Indexing your chats: ${String(indexed)} done`,
     progressWithTotal: (indexed: number, total: number) =>
       `Indexed ${String(indexed)}/${String(total)} chats`,

@@ -179,3 +179,37 @@ describe('design system integrity', () => {
     expect(hosts).toEqual([]);
   });
 });
+
+describe('user-facing copy', () => {
+  /**
+   * The voice rules in strings.ts, enforced where they can be.
+   *
+   * Rule 2 is the checkable one: implementation vocabulary reaching the user.
+   * It leaked twice ("Not in your local copy yet", "Synced storage is full")
+   * and the second survived a fix to the first, because each was reviewed
+   * where it was written rather than against the whole set.
+   */
+  const source = readSourceFiles().find((file) => file.path === 'src/shared/strings.ts');
+  const body = stripComments(source?.text ?? '');
+
+  const INTERNAL_TERMS = [
+    'synced storage',
+    'storage.sync',
+    'local copy',
+    'IndexedDB',
+    'adapter',
+    'checkpoint',
+    'entitlement',
+    'chrome.storage',
+  ];
+
+  it.each(INTERNAL_TERMS)('never says "%s" to a user', (term) => {
+    expect(body.toLowerCase()).not.toContain(term.toLowerCase());
+  });
+
+  it('calls indexing one thing, not sync and indexing both', () => {
+    // The button says "Start indexing", so a banner saying "Sync paused"
+    // describes the same feature by a second name.
+    expect(body).not.toMatch(/'Sync paused/);
+  });
+});
