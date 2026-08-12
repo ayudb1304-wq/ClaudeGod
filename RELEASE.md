@@ -1,28 +1,93 @@
 # RELEASE.md — Release checklist & Chrome Web Store listing kit
 
-## A. Pre-submission checklist (every release)
+## A. Pre-submission checklist
 
-**Automated**
-- [ ] `pnpm verify` (typecheck + lint + tests) green, including network-allowlist, read-only guard, storage-content guard
-- [ ] `pnpm build` — content script <250KB gz; no sourcemaps/dev logs in bundle
-- [ ] Manifest diff reviewed: permissions unchanged (`storage`, `notifications`, `alarms`, `https://claude.ai/*`)
+Rewritten 2026-08-12 against the built product. The original was drafted at M0
+and assumed things that changed: usage is authoritative (no "est." labels), the
+theme follows Claude's own toggle rather than the OS, and the build is
+environment-switched.
 
-**Manual smoke (fresh Chrome profile, real account with 100+ chats)**
-- [ ] Install → onboarding → explicit "Start indexing" → backfill completes with progress; re-open browser → incremental sync only
-- [ ] Cmd+K search: known phrase from an old chat found <1s; jump-to-message lands and highlights; zero-result state OK
-- [ ] Usage widget shows values (or "est." values); simulate threshold → exactly one notification
-- [ ] Create folder, drag chat in from native sidebar and from search results; visible in popup; survives browser restart; (Pro) syncs to second profile signed into same Chrome account
-- [ ] `/` picker inserts prompt and Claude actually accepts the text on send (type one extra char to confirm editor registered it)
-- [ ] Export single chat → Markdown renders code blocks correctly; bulk export folder → ZIP with artifacts as files
-- [ ] License: activate test key → Pro unlocks; deactivate/refund in MoR test mode → graceful downgrade message
-- [ ] Degraded mode: block `claude.ai/api/*` in devtools → calm banner, search over existing index still works, no console errors
-- [ ] Light/dark both readable; overlay fully keyboard-navigable
-- [ ] Network tab whole-session review: only claude.ai + license endpoint
+Ordered so nothing is redone: configure, verify, then capture assets from the
+verified build.
 
-**Store hygiene**
-- [ ] Version bumped, CHANGELOG.md updated
-- [ ] Privacy policy URL live and accurate
-- [ ] Screenshots current with actual UI
+### 0. Ship-build configuration — the easiest thing to get wrong
+
+The extension reads its payment environment at build time, and a wrong value
+fails silently in the worst direction: a test build rejects every real
+customer's key, and a live build during testing charges real money.
+
+- [ ] Product created in **live** mode (test-mode products do not carry over)
+- [ ] `.env` → `VITE_DODO_PRODUCT_ID` set to the **live** product id
+- [ ] `.env` → `VITE_DODO_ENV` **unset or removed** (anything but `test` means live)
+- [ ] `VITE_DEV_HOOKS` unset — a dev-hooks build ships a postMessage bridge
+- [ ] `VITE_UNINSTALL_URL` points at the live feedback form
+- [ ] Rebuild, then confirm the bundle carries the live hosts:
+      `grep -o 'https://[a-z.]*dodopayments.com' dist/assets/*.js | sort -u`
+- [ ] `DODO_API_KEY` is nowhere in `dist` (it is not `VITE_`-prefixed, so it
+      cannot be, but check anyway — this is the one that ends a launch)
+
+### 1. Automated
+
+- [ ] `pnpm verify` green — 280+ tests including the guards that encode the
+      hard rules: network-allowlist, read-only, storage-content, gate coverage,
+      design-system, and copy vocabulary
+- [ ] `pnpm build` — content script under 250KB gz (currently ~91KB)
+- [ ] `dist` clean: no `.map`, no `console.log`, no `CLAUDEGOD_DEV_CMD`
+- [ ] Manifest permissions unchanged: `storage`, `notifications`, `alarms`,
+      host `https://claude.ai/*`
+- [ ] **Known gap:** the network-allowlist test scans `src/` only. Two inert
+      dependency strings (`tinyurl.com` in Dexie's error copy, `json-schema.org`
+      in Zod) reach the bundle without tripping it. Scan `dist` by hand until
+      that guard covers it.
+
+### 2. Manual verification
+
+- [ ] **Run `docs/verification-run.md` end to end** on a fresh Chrome profile
+      with a real 100+ chat account. 13 steps, 60–75 minutes.
+
+Two steps in it matter more than the rest:
+
+- [ ] Step 12, theming: toggle **Claude's own** light/dark switch with your OS
+      set the opposite way. The extension follows Claude, not the OS, and no
+      test can prove that.
+- [ ] Step 13, privacy: whole-session network review shows only `claude.ai`
+      and `dodopayments.com`, and no request body carries conversation text.
+      Everything else on this page is a bug; a failure here is a broken promise
+      and the CWS privacy form's answer.
+
+### 3. Purchase flow, end to end, in live mode
+
+- [ ] Real purchase with a real card on the live checkout link
+- [ ] Licence key arrives by email
+- [ ] Customer lands on a **success page that shows the key** (Dodo appends it
+      to `redirect_url`). Without this a buyer pays and lands nowhere
+- [ ] Key activates in Settings; Pro gates unlock with no reload
+- [ ] Remove licence frees the activation seat
+- [ ] **Refund that purchase and confirm Pro actually drops.** Still unproven:
+      sandbox refunds need a funded wallet, so this has only been simulated by
+      disabling a key. If a real refund does not invalidate the key, refunded
+      customers keep Pro silently and nothing signals it
+
+### 4. Store hygiene
+
+- [ ] Version bumped in `package.json`; CHANGELOG.md written
+- [ ] Privacy policy live on the domain and accurate
+- [ ] Screenshots taken from the **verified** build, not an earlier one
+- [ ] "Unofficial. Not affiliated with or endorsed by Anthropic." prominent in
+      the listing, not buried at the bottom. The name leads with "Claude" and
+      the accent is now orange (PRD §11 risk 5), so this line carries more
+      weight than it would otherwise
+- [ ] Fallback name and slug genuinely decided, so a rejection costs a listing
+      edit rather than a rebuild
+- [ ] CWS name-collision check repeated immediately before submitting
+
+### 5. Open product decisions
+
+- [ ] Free-tier search cap: built as 100 chats; PRD §12 never formally chose
+      between that and 30 days of history
+- [ ] Founder pricing: $29 lifetime for the first 100, then $39. Purchasing
+      power parity is enabled on the product, so confirm what a non-US customer
+      is actually quoted
 
 ## B. Chrome Web Store listing (draft copy — edit freely)
 
