@@ -46,7 +46,17 @@ src/
   shared/                 # utils, constants, feature flags, i18n-ready strings
 ```
 
-**Contexts & messaging:** content script owns DOM UI and same-origin API fetches (it inherits the user's claude.ai session — cookies flow automatically for same-origin requests made from the content-script/page context). Service worker owns alarms, notifications, license revalidation. Popup/options talk to data via shared modules; cross-context communication uses `chrome.runtime` messages with a small typed message schema in `shared/messages.ts`. IndexedDB is accessed from content script and popup directly (same extension origin — note: store DB under the extension's origin, not the page's; if same-origin fetch requires page context, proxy fetches through content script but persist in extension storage).
+**Contexts & messaging:** content script owns DOM UI and same-origin API fetches (it inherits the user's claude.ai session — cookies flow automatically for same-origin requests made from the content-script/page context). Service worker owns alarms, notifications, license revalidation. Popup/options talk to data via shared modules; cross-context communication uses `chrome.runtime` messages with a small typed message schema in `shared/messages.ts`. **IndexedDB is NOT shared between contexts.** This sketch originally assumed the
+content script and popup would see one database "under the extension's origin".
+That is wrong, and it shipped three bugs before anyone checked (api-notes §7): a
+content script runs in an isolated JS *world* but shares the page's storage
+*origin*, so the conversation mirror lives in IndexedDB under `https://claude.ai`.
+An extension page opening `claudegod` gets a different, empty database.
+
+The content script therefore owns the mirror outright, and extension pages ask it
+for anything that touches conversations — titles, bulk export, delete-all-data —
+over the `shared/messages.ts` schema. When no claude.ai tab is listening, those
+surfaces degrade honestly rather than reporting an empty database as an answer.
 
 > Implementation note for the fetch pathway: MV3 content scripts execute in an isolated world but network requests from content scripts are made with the page's origin and credentials for same-origin URLs. Verify early (M1 spike) that `fetch('/api/organizations/...')` from the content script returns 200 with session auth. If Claude adds anti-CSRF headers, mirror the headers the web app itself sends (read them once from its own requests via a page-world interceptor as a last resort — keep this behind the adapter).
 

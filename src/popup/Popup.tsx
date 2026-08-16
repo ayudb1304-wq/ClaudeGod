@@ -7,11 +7,9 @@ import {
   type UsageSnapshot,
 } from '@/core/usage';
 import { loadFolders, subscribeFolders, type Folder } from '@/core/folders';
-import { getConversationTitles } from '@/core/db';
 import { getEntitlements, subscribeEntitlements } from '@/core/entitlements';
-import { createDexieExportSource, exportConversationsZip } from '@/core/exporter';
 import { conversationWebUrl } from '@/api/claudeAdapter';
-import { downloadFile } from '@/shared/download';
+import { requestConversationTitles, requestExportAll } from './syncClient';
 import { strings } from '@/shared/strings';
 import { UpgradeLink } from '@/shared/UpgradeLink';
 import { BrandMark } from '@/shared/BrandMark';
@@ -154,7 +152,11 @@ function FoldersSection() {
   useEffect(() => {
     const unsubscribe = subscribeFolders((next) => {
       setFolders(next);
-      getConversationTitles([...new Set(next.flatMap((folder) => folder.convIds))])
+      // Titles come from the content script: the mirror lives under claude.ai's
+      // storage origin, so this page cannot read it (api-notes §7). With no
+      // Claude tab open there is simply nothing to resolve against, and the
+      // rows fall back to their placeholder label.
+      requestConversationTitles([...new Set(next.flatMap((folder) => folder.convIds))])
         .then(setTitles)
         .catch(() => setTitles(new Map()));
     });
@@ -213,18 +215,17 @@ function ExportSection() {
     setBusy(true);
     setStatus(null);
     try {
-      const uuids = await createDexieExportSource().listConversationUuids();
-      if (uuids.length === 0) {
-        setStatus(strings.exportUi.empty);
-        return;
-      }
-      const file = await exportConversationsZip(uuids, {
-        onProgress: (done, total) => {
-          setStatus(strings.exportUi.working(done, total));
-        },
-      });
-      downloadFile(file);
-      setStatus(null);
+      // The content script owns the mirror and does the work, including saving
+      // the file — this popup closes the moment focus moves, which would abort
+      // a download started here.
+      const reply = await requestExportAll();
+      setStatus(
+        reply.outcome === 'downloaded'
+          ? null
+          : reply.outcome === 'empty'
+            ? strings.exportUi.empty
+            : strings.exportUi.failed,
+      );
     } catch {
       setStatus(strings.exportUi.failed);
     } finally {

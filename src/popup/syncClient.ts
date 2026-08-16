@@ -1,4 +1,10 @@
-import type { ExtensionMessage, SyncStateReply } from '@/shared/messages';
+import type {
+  DeleteReply,
+  ExportReply,
+  ExtensionMessage,
+  SyncStateReply,
+  TitlesReply,
+} from '@/shared/messages';
 import { CLAUDE_HOME_URL, CLAUDE_TAB_PATTERN, isClaudeUrl } from '@/api/claudeAdapter';
 
 /**
@@ -87,13 +93,27 @@ export async function resolveBridge(): Promise<BridgeTarget> {
   throw new SyncClientFailure('no-content-script');
 }
 
-async function send(message: ExtensionMessage): Promise<SyncStateReply> {
+async function send<Reply>(message: ExtensionMessage): Promise<Reply> {
   const { tabId } = await resolveBridge();
   try {
-    return await chrome.tabs.sendMessage<ExtensionMessage, SyncStateReply>(tabId, message);
+    return await chrome.tabs.sendMessage<ExtensionMessage, Reply>(tabId, message);
   } catch {
     throw new SyncClientFailure('no-content-script');
   }
+}
+
+/** Like `send`, but never opens a tab. For reads that run without being asked. */
+async function query<Reply>(message: ExtensionMessage): Promise<Reply> {
+  const tabs = await chrome.tabs.query({ url: CLAUDE_TAB_PATTERN });
+  for (const tab of tabs) {
+    if (tab.id === undefined) continue;
+    try {
+      return await chrome.tabs.sendMessage<ExtensionMessage, Reply>(tab.id, message);
+    } catch {
+      // Tab predates the extension, so nothing is listening. Try the next.
+    }
+  }
+  throw new SyncClientFailure(tabs.length === 0 ? 'no-claude-tab' : 'no-content-script');
 }
 
 /**
@@ -111,5 +131,26 @@ export async function requestSyncState(): Promise<SyncStateReply> {
 }
 
 export function requestStartSync(): Promise<SyncStateReply> {
-  return send({ type: 'START_SYNC' });
+  return send<SyncStateReply>({ type: 'START_SYNC' });
+}
+
+/**
+ * Titles for folder contents. Read-only, so it never opens a tab: with no
+ * Claude tab open the caller simply shows ids-only rows.
+ */
+export async function requestConversationTitles(
+  convIds: string[],
+): Promise<Map<string, string>> {
+  if (convIds.length === 0) return new Map();
+  const reply = await query<TitlesReply>({ type: 'GET_CONVERSATION_TITLES', convIds });
+  return new Map(reply.titles);
+}
+
+/** Explicit user action, so opening a tab to serve it is fair. */
+export function requestExportAll(): Promise<ExportReply> {
+  return send<ExportReply>({ type: 'EXPORT_ALL' });
+}
+
+export function requestDeleteLocalData(): Promise<DeleteReply> {
+  return send<DeleteReply>({ type: 'DELETE_LOCAL_DATA' });
 }

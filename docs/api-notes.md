@@ -228,3 +228,37 @@ then the M4 folder panel, where an Enter meant for a folder name **sent a real
 message to a real account** during verification. Every shadow host we mount now
 stops keyboard and input events at its boundary (`content/ui/shieldKeyboard.ts`).
 Any new host must do the same; this is not optional polish.
+
+---
+
+## 7. Content scripts do not share the extension's storage origin (2026-08-16)
+
+Found from a user report — folder chat names rendered in the panel but not in
+the popup.
+
+A content script runs in an isolated JavaScript **world**, but it shares the
+page's storage **origin**. So `indexedDB.open('claudegod')` from the content
+script opens a database under `https://claude.ai`, while the same call from the
+popup, options page, or service worker opens a *different, empty* database under
+`chrome-extension://<id>`. Confirmed live: the claude.ai origin held
+`claudegod` with 310 conversations and 2,592 messages; extension pages saw none
+of it.
+
+ARCHITECTURE §2 asserted the opposite ("same extension origin") and nothing ever
+checked, so three features were quietly broken:
+
+1. **Popup folder titles** — every chat rendered as "Not in your local copy yet".
+2. **Popup "Export all chats"** — reported "Nothing to export yet" regardless of
+   how much was mirrored.
+3. **Settings "Delete all local data"** — deleted the empty extension-origin
+   database and reported success while every conversation stayed on disk. This
+   one is a privacy-claim failure, not just a broken feature.
+
+**Rule going forward: the content script owns the mirror.** Any extension page
+that needs conversation data asks for it over `shared/messages.ts`. If a surface
+outside the content script ever imports `core/db` again, it is this bug.
+
+Not fixable by moving the database: the alternatives are an offscreen document
+(needs the `offscreen` permission) or persisting through the service worker
+(needs every read to cross a message boundary anyway). The permission set is
+frozen, and messaging is already built.

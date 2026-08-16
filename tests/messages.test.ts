@@ -8,9 +8,13 @@ import { isClaudeUrl, CLAUDE_TAB_PATTERN } from '@/api/claudeAdapter';
  * unrecognised shapes rather than switch on them.
  */
 describe('isExtensionMessage', () => {
-  it('accepts the two known commands', () => {
+  it('accepts the known commands', () => {
     expect(isExtensionMessage({ type: 'START_SYNC' })).toBe(true);
     expect(isExtensionMessage({ type: 'GET_SYNC_STATE' })).toBe(true);
+    expect(isExtensionMessage({ type: 'EXPORT_ALL' })).toBe(true);
+    expect(isExtensionMessage({ type: 'DELETE_LOCAL_DATA' })).toBe(true);
+    expect(isExtensionMessage({ type: 'GET_CONVERSATION_TITLES', convIds: ['a'] })).toBe(true);
+    expect(isExtensionMessage({ type: 'GET_CONVERSATION_TITLES', convIds: [] })).toBe(true);
   });
 
   it.each([
@@ -21,6 +25,11 @@ describe('isExtensionMessage', () => {
     ['an object with no type', { cmd: 'START_SYNC' }],
     ['an unknown type', { type: 'DELETE_EVERYTHING' }],
     ['a non-string type', { type: 7 }],
+    // A payload command with a junk payload is as dangerous as an unknown one:
+    // the handler would pass it straight to a database query.
+    ['titles with no ids', { type: 'GET_CONVERSATION_TITLES' }],
+    ['titles with a string payload', { type: 'GET_CONVERSATION_TITLES', convIds: 'a' }],
+    ['titles with non-string ids', { type: 'GET_CONVERSATION_TITLES', convIds: ['a', 7] }],
   ])('rejects %s', (_label, value) => {
     expect(isExtensionMessage(value)).toBe(false);
   });

@@ -9,6 +9,7 @@ import {
   type Settings,
 } from '@/shared/settings';
 import { deleteAllLocalData } from '@/core/syncRunner';
+import { requestDeleteLocalData } from '@/popup/syncClient';
 import { strings } from '@/shared/strings';
 import { UpgradeLink } from '@/shared/UpgradeLink';
 import { getEntitlements, subscribeEntitlements } from '@/core/entitlements';
@@ -106,6 +107,13 @@ export function SettingsSection() {
   const wipe = useCallback(async (): Promise<void> => {
     setNotice(null);
     try {
+      // The mirror lives in IndexedDB under claude.ai's storage origin, which
+      // this page cannot reach (api-notes §7), so the content script performs
+      // the wipe. Doing it here would clear an empty database and report
+      // success while every conversation stayed on disk.
+      await requestDeleteLocalData();
+      // Belt and braces: clears chrome.storage plus any database that ever got
+      // created under the extension's own origin.
       await deleteAllLocalData();
       setConfirmingWipe(false);
       setNotice(strings.settingsUi.wipeDone);
