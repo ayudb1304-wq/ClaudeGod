@@ -60,6 +60,15 @@ describe('narrowSettings', () => {
     expect(narrowSettings('nonsense')).toEqual(DEFAULT_SETTINGS);
   });
 
+  it('keeps dismissed CTA tags and drops junk entries', () => {
+    // A dismissal that fails to survive a read turns a one-time card back into
+    // a recurring nag, so the filter must not throw the whole list away.
+    expect(narrowSettings({ dismissedCtas: ['bulk-export', 7, null] }).dismissedCtas).toEqual([
+      'bulk-export',
+    ]);
+    expect(narrowSettings({ dismissedCtas: 'bulk-export' }).dismissedCtas).toEqual([]);
+  });
+
   it('clamps a stored threshold outside the range', () => {
     // Written by an older build or edited by hand; must not escape the range.
     expect(narrowSettings({ alertThresholdPercent: 5 }).alertThresholdPercent).toBe(50);

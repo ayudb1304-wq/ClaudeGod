@@ -47,6 +47,12 @@ export interface Settings {
    * so search keeps working over what is already stored.
    */
   syncPaused: boolean;
+  /**
+   * UpgradeSource tags the user has dismissed. A CTA that cannot be dismissed
+   * is a nag, and FEATURES 7.1 rules those out — so "no thanks" is permanent
+   * per surface, not per session.
+   */
+  dismissedCtas: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -58,6 +64,7 @@ export const DEFAULT_SETTINGS: Settings = {
   folderPanel: { open: false },
   searchShortcut: { key: 'k', requireShift: false },
   syncPaused: false,
+  dismissedCtas: [],
 };
 
 /** Letters only, lowercased. Anything else falls back to the default. */
@@ -146,6 +153,9 @@ export function narrowSettings(raw: unknown): Settings {
       requireShift: booleanOr(shortcut['requireShift'], defaults.searchShortcut.requireShift),
     },
     syncPaused: booleanOr(root['syncPaused'], defaults.syncPaused),
+    dismissedCtas: Array.isArray(root['dismissedCtas'])
+      ? root['dismissedCtas'].filter((tag): tag is string => typeof tag === 'string')
+      : defaults.dismissedCtas,
   };
 }
 
@@ -171,5 +181,21 @@ export async function updateUsageWidgetSettings(
   await setSync('settings', {
     ...current,
     usageWidget: { ...current.usageWidget, ...patch },
+  });
+}
+
+/**
+ * Records that the user dismissed a contextual upgrade CTA.
+ *
+ * Read-merge-write on an array is safe here in a way the usage widget's
+ * position was not: dismissals only ever append, so two racing writers lose at
+ * most one tag rather than corrupting a coordinate.
+ */
+export async function dismissCta(source: string): Promise<void> {
+  const current = await readSettings();
+  if (current.dismissedCtas.includes(source)) return;
+  await setSync('settings', {
+    ...current,
+    dismissedCtas: [...current.dismissedCtas, source],
   });
 }

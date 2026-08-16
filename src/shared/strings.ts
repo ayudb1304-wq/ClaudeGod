@@ -181,6 +181,8 @@ export const strings = {
 
   upgrade: {
     link: 'Upgrade to Pro',
+    proBadge: 'Pro',
+    dismiss: 'Hide this',
     // Kept to one short clause each. A gate that lectures is a gate people
     // resent (FEATURES 7.1: quiet, never a nag).
     folders: 'Pro gives you unlimited folders.',

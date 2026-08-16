@@ -53,17 +53,35 @@ describe('CTA coverage', () => {
 
   const files = readSourceFiles();
 
+  /** Either CTA component counts: the quiet inline link, or the louder card. */
+  const CTA_COMPONENTS = ['UpgradeLink', 'UpgradeCallout'];
+
   it.each(GATED_SURFACES)('%s offers an upgrade path', (path) => {
     const file = files.find((candidate) => candidate.path === path);
     expect(file, `${path} not found`).toBeDefined();
-    expect(stripComments(file?.text ?? '')).toContain('UpgradeLink');
+    const code = stripComments(file?.text ?? '');
+    expect(CTA_COMPONENTS.some((component) => code.includes(component))).toBe(true);
   });
 
-  it('never renders the CTA as a modal or interrupt', () => {
+  it.each(CTA_COMPONENTS)('%s never renders as a modal or interrupt', (component) => {
     // FEATURES 7.1: quiet, contextual, never interrupts typing.
-    const cta = files.find((file) => file.path === 'src/shared/UpgradeLink.tsx');
+    const cta = files.find((file) => file.path === `src/shared/${component}.tsx`);
+    expect(cta, `${component}.tsx not found`).toBeDefined();
     const code = stripComments(cta?.text ?? '');
     expect(code).not.toMatch(/alert\(|confirm\(|showModal|position:\s*fixed/i);
+  });
+
+  /**
+   * The louder card earns its prominence by being dismissible for good. If that
+   * ever regresses it becomes the nag FEATURES 7.1 rules out, so it is asserted
+   * rather than trusted.
+   */
+  it('lets the prominent CTA be dismissed permanently', () => {
+    const code = stripComments(
+      files.find((file) => file.path === 'src/shared/UpgradeCallout.tsx')?.text ?? '',
+    );
+    expect(code).toContain('dismissCta');
+    expect(code).toMatch(/dismissedCtas/);
   });
 });
 

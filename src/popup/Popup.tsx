@@ -11,7 +11,7 @@ import { getEntitlements, subscribeEntitlements } from '@/core/entitlements';
 import { conversationWebUrl } from '@/api/claudeAdapter';
 import { requestConversationTitles, requestExportAll } from './syncClient';
 import { strings } from '@/shared/strings';
-import { UpgradeLink } from '@/shared/UpgradeLink';
+import { UpgradeCallout } from '@/shared/UpgradeCallout';
 import { BrandMark } from '@/shared/BrandMark';
 import { IndexingSection } from './IndexingSection';
 
@@ -234,12 +234,9 @@ function ExportSection() {
   }
 
   if (!canExport) {
-    // Quiet contextual CTA, never a modal (FEATURES 7.1).
-    return (
-      <p class="cg-notice">
-        {strings.exportUi.proOnly} <UpgradeLink source="bulk-export" />
-      </p>
-    );
+    // Card rather than a footnote: this stands where the export button would
+    // be, so it has to explain itself. Dismissible, per FEATURES 7.1.
+    return <UpgradeCallout source="bulk-export" message={strings.upgrade.bulkExport} />;
   }
 
   return (

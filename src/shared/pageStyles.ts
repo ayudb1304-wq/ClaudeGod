@@ -157,6 +157,60 @@ body {
 .cg-notice[data-tone="warn"] { color: var(--cg-warn); }
 .cg-notice[data-tone="danger"] { color: var(--cg-danger); }
 
+/* ---------- upgrade callout ----------
+   Louder than .cg-notice because it stands where a feature used to be, but
+   still a card and not a modal (FEATURES 7.1). The dismiss control is part of
+   the design, not an afterthought: this is only allowed to be this prominent
+   because it can be sent away for good. */
+
+.cg-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cg-s3);
+  padding: var(--cg-s3) var(--cg-s4);
+  border: 1px solid var(--cg-accent-soft);
+  border-left: 3px solid var(--cg-accent);
+  border-radius: var(--cg-r-md);
+  background: var(--cg-accent-soft);
+}
+
+.cg-callout-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+
+.cg-callout-title {
+  font: 600 10px/1 var(--cg-font);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--cg-accent-text);
+}
+
+.cg-callout-text { margin: 0; font-size: var(--cg-fs-meta); color: var(--cg-text); }
+
+.cg-callout-actions { display: flex; align-items: center; gap: var(--cg-s2); }
+
+.cg-callout-cta {
+  padding: 5px 10px;
+  border-radius: var(--cg-r-pill);
+  background: var(--cg-accent);
+  color: var(--cg-on-accent);
+  font: 600 var(--cg-fs-meta)/1 var(--cg-font);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.cg-callout-cta:hover { background: var(--cg-accent-hover); }
+
+.cg-callout-dismiss {
+  border: 0;
+  background: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--cg-text-faint);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.cg-callout-dismiss:hover { color: var(--cg-text); }
+
 .cg-footnote {
   padding: var(--cg-s4) var(--cg-s5);
   border-top: 1px solid var(--cg-border);
